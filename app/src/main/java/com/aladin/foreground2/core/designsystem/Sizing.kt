@@ -9,6 +9,8 @@ import androidx.compose.ui.unit.dp
 @Immutable
 data class Sizing(
     val appIcon: Dp = 40.dp,
+    /** Fully expanded breathing circle on the breath overlay. */
+    val breathCircle: Dp = 240.dp,
 )
 
 internal val LocalSizing = staticCompositionLocalOf { Sizing() }

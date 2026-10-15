@@ -25,6 +25,12 @@ sealed interface GateInput {
     data class Tick(
         val at: Long,
     ) : GateInput
+
+    /** The breath overlay for [packageName] finished its countdown at [at]. */
+    data class BreathFinished(
+        val packageName: String,
+        val at: Long,
+    ) : GateInput
 }
 
 /** One gate moved: [packageName] went [from] -> [to], and the caller must carry out [effects]. */
@@ -36,8 +42,9 @@ data class GateUpdate(
 )
 
 /**
- * Holds every watched app's gate state in memory and turns front-app changes into Entered/Left, and poll ticks into
- * Tick for the watched app in front. Not thread-safe: call [handle] from one coroutine.
+ * Holds every watched app's gate state in memory and turns front-app changes into Entered/Left, poll ticks into
+ * Tick for the watched app in front, and overlay events into the matching gate events. Not thread-safe: call
+ * [handle] from one coroutine.
  */
 @Singleton
 class GateCoordinator
@@ -59,6 +66,12 @@ class GateCoordinator
                 is GateInput.Tick ->
                     listOfNotNull(
                         front?.takeIf { it in watched }?.let { send(it, GateEvent.Tick(input.at)) },
+                    )
+                is GateInput.BreathFinished ->
+                    listOfNotNull(
+                        input.packageName
+                            .takeIf { it in watched }
+                            ?.let { send(it, GateEvent.BreathFinished(input.at)) },
                     )
             }
 

@@ -16,6 +16,7 @@ import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.logging.Log
+import com.aladin.foreground2.service.overlay.OverlayEffects
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,8 +38,8 @@ import javax.inject.Inject
 
 /**
  * Foreground service (type specialUse) that keeps detection alive: polls the front app while the screen is on and
- * unlocked, and feeds front-app changes, poll ticks and the watched-apps list into [GateCoordinator]. For now the
- * coordinator's effects are only logged.
+ * unlocked, and feeds front-app changes, poll ticks, overlay events and the watched-apps list into [GateCoordinator].
+ * The coordinator's overlay effects are carried out by [OverlayEffects].
  */
 @AndroidEntryPoint
 class DetectionService : Service() {
@@ -49,6 +50,8 @@ class DetectionService : Service() {
     @Inject lateinit var screenState: ScreenStateSource
 
     @Inject lateinit var watchedApps: WatchedAppsRepository
+
+    @Inject lateinit var overlays: OverlayEffects
 
     @Inject lateinit var clock: Clock
 
@@ -82,6 +85,7 @@ class DetectionService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        overlays.hideAll()
         Log.i(Log.Area.Detect) { "service onDestroy" }
         super.onDestroy()
     }
@@ -98,8 +102,11 @@ class DetectionService : Service() {
                 Log.i(Log.Area.Detect) { if (unlocked) "unlocked, polling" else "screen off, polling paused" }
                 if (unlocked) merge(detector.changes().map(GateInput::FrontChanged), ticks()) else emptyFlow()
             }
-        // One collector, so the coordinator sees inputs strictly one at a time.
-        merge(watched.drop(1).map(GateInput::WatchedChanged), polling).collect { coordinator.handle(it) }
+        // One collector, so the coordinator sees inputs strictly one at a time and effects run in order.
+        // Overlay events keep flowing while the screen is off, so a breath can still finish then.
+        merge(watched.drop(1).map(GateInput::WatchedChanged), polling, overlays.inputs).collect { input ->
+            coordinator.handle(input).forEach { overlays.apply(it) }
+        }
     }
 
     private fun ticks(): Flow<GateInput.Tick> =

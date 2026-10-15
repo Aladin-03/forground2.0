@@ -5,8 +5,10 @@ import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.FakeClock
 import com.aladin.foreground2.core.domain.gate.GateEffect.HideOverlay
 import com.aladin.foreground2.core.domain.gate.GateEffect.ShowBreath
+import com.aladin.foreground2.core.domain.gate.GateEffect.ShowPrompt
 import com.aladin.foreground2.core.domain.gate.GateState.Breathing
 import com.aladin.foreground2.core.domain.gate.GateState.Idle
+import com.aladin.foreground2.core.domain.gate.GateState.Prompting
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -98,5 +100,29 @@ class GateCoordinatorTest {
         assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Idle, listOf(HideOverlay))), updates)
         assertEquals(Idle, coordinator.stateOf(YOUTUBE))
         assertTrue(front(LAUNCHER).isEmpty())
+    }
+
+    @Test
+    fun `a finished breath moves the app to the prompt`() {
+        front(YOUTUBE)
+        clock.advanceBy(TIMING.breathDurationMillis)
+        val updates = coordinator.handle(GateInput.BreathFinished(YOUTUBE, clock.now))
+        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Prompting, listOf(ShowPrompt))), updates)
+    }
+
+    @Test
+    fun `a breath finishing after the user left and came back is ignored`() {
+        front(YOUTUBE)
+        clock.advanceBy(3_000)
+        front(LAUNCHER)
+        front(YOUTUBE)
+        clock.advanceBy(TIMING.breathDurationMillis - 3_000)
+        assertTrue(coordinator.handle(GateInput.BreathFinished(YOUTUBE, clock.now)).isEmpty())
+        assertEquals(Breathing(START + 3_000), coordinator.stateOf(YOUTUBE))
+    }
+
+    @Test
+    fun `a breath finishing for an unwatched app is ignored`() {
+        assertTrue(coordinator.handle(GateInput.BreathFinished(WHATSAPP, clock.now)).isEmpty())
     }
 }
