@@ -14,6 +14,7 @@ import com.aladin.foreground2.core.permissions.PermissionChecker
 import com.aladin.foreground2.core.permissions.missingRequired
 import com.aladin.foreground2.feature.home.HomeRoute
 import com.aladin.foreground2.feature.onboarding.OnboardingRoute
+import com.aladin.foreground2.service.detection.DetectionServiceController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -22,9 +23,16 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var permissionChecker: PermissionChecker
 
+    @Inject
+    lateinit var detectionServiceController: DetectionServiceController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Brings detection back if it was stopped (force-stop, crash). Does nothing until onboarding is done.
+        if (savedInstanceState == null && permissionChecker.missingRequired().isEmpty()) {
+            detectionServiceController.startIfReady()
+        }
         setContent {
             // Decided once per launch (saved across rotation) so the graph's start doesn't shift under the back stack.
             val needsOnboarding =

@@ -4,6 +4,7 @@ import com.aladin.foreground2.core.data.repo.SettingsRepository
 import com.aladin.foreground2.core.permissions.Permission
 import com.aladin.foreground2.core.permissions.PermissionChecker
 import com.aladin.foreground2.core.permissions.missingRequired
+import com.aladin.foreground2.service.detection.DetectionServiceController
 import com.aladin.foreground2.testing.MainDispatcherExtension
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -26,6 +27,15 @@ private class FakeSettingsRepository : SettingsRepository {
     }
 }
 
+private class FakeDetectionServiceController : DetectionServiceController {
+    var starts = 0
+
+    override fun startIfReady(): Boolean {
+        starts++
+        return true
+    }
+}
+
 class OnboardingViewModelTest {
     @JvmField
     @RegisterExtension
@@ -33,7 +43,8 @@ class OnboardingViewModelTest {
 
     private val checker = FakePermissionChecker()
     private val settings = FakeSettingsRepository()
-    private val viewModel = OnboardingViewModel(checker, settings)
+    private val detection = FakeDetectionServiceController()
+    private val viewModel = OnboardingViewModel(checker, settings, detection)
 
     private fun grantedIn(state: OnboardingUiState) = state.permissions.filter { it.granted }.map { it.permission }
 
@@ -65,15 +76,17 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `finish persists the flag once required permissions are granted`() {
+    fun `finish persists the flag and starts detection once required permissions are granted`() {
         viewModel.onFinish()
         assertFalse(viewModel.uiState.value.finished)
         assertFalse(settings.onboardingComplete.value)
+        assertEquals(0, detection.starts)
 
         checker.granted += Permission.entries.filter { it.required }
         viewModel.refresh()
         viewModel.onFinish()
         assertTrue(viewModel.uiState.value.finished)
         assertTrue(settings.onboardingComplete.value)
+        assertEquals(1, detection.starts)
     }
 }
