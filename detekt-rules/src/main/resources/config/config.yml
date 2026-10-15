@@ -1,0 +1,12 @@
+fg2:
+  active: true
+  HardcodedComposeString:
+    active: true
+    allowedCalls:
+      - 'testTag'
+    ignoredAnnotations:
+      - 'Preview'
+  InlineDesignValue:
+    active: true
+    allowedPackages:
+      - 'com.aladin.foreground2.core.designsystem'

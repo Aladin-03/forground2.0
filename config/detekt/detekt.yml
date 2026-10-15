@@ -1,0 +1,31 @@
+# Builds on detekt's default config (buildUponDefaultConfig = true); only overrides live here.
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9]*'
+
+style:
+  MagicNumber:
+    excludes: ['**/core/designsystem/**', '**/test/**']
+    ignorePropertyDeclaration: true
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+
+complexity:
+  LongParameterList:
+    ignoreDefaultParameters: true
+  TooManyFunctions:
+    ignoreAnnotatedFunctions: ['Preview']
+
+# Custom rules from :detekt-rules.
+fg2:
+  active: true
+  HardcodedComposeString:
+    active: true
+    allowedCalls: ['testTag']
+    ignoredAnnotations: ['Preview']
+  InlineDesignValue:
+    active: true
+    allowedPackages: ['com.aladin.foreground2.core.designsystem']

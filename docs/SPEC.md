@@ -1,0 +1,45 @@
+# Foreground 2.0 — Spec
+
+Personal Android app (sideloaded, single user). Every time the user enters a **watched app**, they get a 1-minute breathing pause, then choose: use it for up to 15 minutes, or lock it for a chosen duration.
+
+**Hard constraint: NO AccessibilityService, ever.** Indian banking apps (Axis, Canara) refuse to run when an untrusted accessibility service is enabled. Detection uses Usage Access; blocking uses an overlay window.
+
+## Behaviour rules
+
+1. **Watched apps** are picked from a list of all launcher apps on the phone. Unwatched apps are never touched.
+2. **Entry = breath.** A watched app becoming the front app after any other app (including switching back from WhatsApp) is an *entry*. Each entry shows a full-screen breathing overlay for 60 s. No buttons are interactive until it finishes. Back key does nothing.
+3. **Escaping doesn't skip.** If the user presses Home mid-breath, the overlay is removed. The next entry starts a fresh full minute.
+4. **Prompt.** After the breath: "Block this app?" with Yes / No.
+5. **No = allowed window.** The overlay goes away and the app is usable until `now + 15 min`. If the app is still in front when the window ends, the breath overlay appears on the spot, then the prompt again. Leaving the app ends the sitting; the next entry gets a breath (rule 2).
+6. **Yes = duration picker.** Scroll wheels for days (0–30), hours (0–23), minutes (0–59), plus Start. Start is disabled at zero. Once started, a lock cannot be cancelled or shortened.
+7. **Locked.** Entering a locked app skips the breath and shows "Unlocks in Xd Yh Zm" (live countdown) with a single **Go home** button.
+8. **Independent locks.** Each app has its own lock. When it expires, the app goes back to rule 2.
+9. **Persistence.** A lock is stored as its end time (epoch ms). Locks survive reboots and process death. The allowed window is in memory only; losing it just means a fresh breath.
+
+## Out of scope
+
+Accessibility service · clock-tamper protection · broken-lock logging · special handling for browsers · any task/credits/planner features.
+
+## Technical approach
+
+- **Detection:** a foreground service (type `specialUse`, persistent notification) polls `UsageStatsManager.queryEvents` every ~500 ms and tracks `ACTIVITY_RESUMED` events to know the current front package. A short flash of the app before the overlay covers it is acceptable.
+- **Overlay:** a `WindowManager` window of type `TYPE_APPLICATION_OVERLAY`, full screen, focusable, consuming touches and the back key, hosting a `ComposeView`. The service must provide the `ComposeView` with a `LifecycleOwner`, `ViewModelStoreOwner` and `SavedStateRegistryOwner` by hand.
+- **App list:** `PackageManager.queryIntentActivities(ACTION_MAIN + CATEGORY_LAUNCHER)` with a matching `<queries>` manifest entry. No `QUERY_ALL_PACKAGES`.
+- **Storage:** Room for watched apps and locks; DataStore Preferences for flags (e.g. onboarding done).
+
+### Permissions
+
+| Permission | Why |
+|---|---|
+| Usage access (`PACKAGE_USAGE_STATS`) | Know the front app |
+| Display over other apps (`SYSTEM_ALERT_WINDOW`) | Draw breath / prompt / lock overlays |
+| `POST_NOTIFICATIONS` | Foreground service notification (Android 13+) |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Keep detection running |
+| `RECEIVE_BOOT_COMPLETED` | Restart service after reboot |
+| Battery-optimisation exemption + OEM autostart | Infinix XOS kills background services aggressively |
+
+## Stack
+
+Kotlin · Jetpack Compose (Material 3) · MVVM + pure domain layer · Hilt · Room · DataStore Preferences · KSP (not kapt) · detekt + ktlint · minSdk 29, target/compile SDK 35 · single `app` module.
+
+Test device: physical Infinix X6871. Built and run from VS Code + terminal (`./gradlew`, `adb`), not Android Studio.

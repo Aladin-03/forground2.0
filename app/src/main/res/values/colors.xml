@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only for XML-level resources (launcher icon, window background). Compose uses core/designsystem. -->
+<resources>
+  <color name="launcher_background">#FF4A6E5C</color>
+  <color name="launcher_foreground">#FFFBFDF8</color>
+</resources>
