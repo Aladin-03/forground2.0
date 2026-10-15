@@ -7,4 +7,28 @@
   <string name="picker_title">Watched apps</string>
   <string name="picker_search_hint">Search apps</string>
   <string name="picker_empty">No apps match</string>
+
+  <string name="onboarding_title">Set up Foreground</string>
+  <string name="onboarding_intro">Foreground needs a few permissions to notice when you open a watched app and pause it. Tap Grant on each one, switch it on, then come back here.</string>
+  <string name="onboarding_required">Required</string>
+  <string name="onboarding_recommended">Recommended</string>
+  <string name="onboarding_granted">Granted</string>
+  <string name="onboarding_not_granted">Not granted</string>
+  <string name="onboarding_grant">Grant</string>
+  <string name="onboarding_continue">Continue</string>
+  <string name="onboarding_continue_hint">Grant the required permissions to continue.</string>
+
+  <string name="permission_usage_title">Usage access</string>
+  <string name="permission_usage_body">Lets Foreground see which app is in front, so it knows when you open a watched app.</string>
+  <string name="permission_overlay_title">Display over other apps</string>
+  <string name="permission_overlay_body">Lets Foreground show the breathing pause and the lock screen on top of a watched app.</string>
+  <string name="permission_notifications_title">Notifications</string>
+  <string name="permission_notifications_body">Android requires an ongoing notification for the background service that watches for apps.</string>
+  <string name="permission_battery_title">Unrestricted battery use</string>
+  <string name="permission_battery_body">Stops Android from putting Foreground to sleep, which would stop it noticing watched apps.</string>
+
+  <string name="onboarding_autostart_title">Autostart</string>
+  <string name="onboarding_autostart_body">Infinix XOS may close apps running in the background, even with battery use unrestricted. If that happens, Foreground stops pausing your watched apps. Open the settings below and allow Foreground to auto-start and keep running in the background. If the autostart screen doesn\'t open, you\'ll land on Foreground\'s App info page: look under Battery or App launch.</string>
+  <string name="onboarding_autostart_unchecked">Can\'t be checked automatically</string>
+  <string name="onboarding_autostart_open">Open settings</string>
 </resources>
