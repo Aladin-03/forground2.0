@@ -1,8 +1,10 @@
 package com.aladin.foreground2.feature.home.ui
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,28 +19,36 @@ import com.aladin.foreground2.feature.home.HomeViewModel
 
 @Composable
 fun HomeScreen(
+    onOpenPicker: () -> Unit,
     modifier: Modifier = Modifier,
     @Suppress("UnusedParameter") viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    HomeContent(modifier)
+    HomeContent(onOpenPicker = onOpenPicker, modifier = modifier)
 }
 
 @Composable
-private fun HomeContent(modifier: Modifier = Modifier) {
-    Box(
+private fun HomeContent(
+    onOpenPicker: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
         modifier = modifier.fillMaxSize().padding(ForegroundTheme.spacing.lg),
-        contentAlignment = Alignment.Center,
+        verticalArrangement = Arrangement.spacedBy(ForegroundTheme.spacing.lg, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
+        Button(onClick = onOpenPicker) {
+            Text(stringResource(R.string.home_open_picker))
+        }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun HomeContentPreview() {
-    ForegroundTheme { HomeContent() }
+    ForegroundTheme { HomeContent(onOpenPicker = {}) }
 }

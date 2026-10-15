@@ -11,9 +11,10 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 
 | Package | What belongs there |
 |---|---|
-| `core/designsystem/` | Theme, colour (`Palette`), spacing (`ForegroundTheme.spacing`), typography tokens |
+| `core/designsystem/` | Theme, colour (`Palette`), spacing (`ForegroundTheme.spacing`), sizes (`ForegroundTheme.sizing`), typography tokens |
 | `core/domain/` | Pure Kotlin: models, gate state machine, `Clock` |
 | `core/data/db/` | Room database, entities, DAOs |
+| `core/data/apps/` | Installed-app sources via PackageManager (launcher app list, icons) |
 | `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs |
 | `core/permissions/` | Permission checks and Settings deep-link intents |
 | `core/logging/` | `Log.kt`, the only logger |

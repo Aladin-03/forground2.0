@@ -47,7 +47,7 @@ fun ForegroundTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    CompositionLocalProvider(LocalSpacing provides Spacing()) {
+    CompositionLocalProvider(LocalSpacing provides Spacing(), LocalSizing provides Sizing()) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColors else LightColors,
             typography = ForegroundTypography,
@@ -56,10 +56,15 @@ fun ForegroundTheme(
     }
 }
 
-/** Access to non-Material tokens, e.g. `ForegroundTheme.spacing.md`. */
+/** Access to non-Material tokens, e.g. `ForegroundTheme.spacing.md`, `ForegroundTheme.sizing.appIcon`. */
 object ForegroundTheme {
     val spacing: Spacing
         @Composable
         @ReadOnlyComposable
         get() = LocalSpacing.current
+
+    val sizing: Sizing
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalSizing.current
 }

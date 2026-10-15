@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="app_name">Foreground 2.0</string>
+
+  <string name="home_open_picker">Watched apps</string>
+
+  <string name="picker_title">Watched apps</string>
+  <string name="picker_search_hint">Search apps</string>
+  <string name="picker_empty">No apps match</string>
 </resources>

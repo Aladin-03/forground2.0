@@ -1,12 +1,17 @@
 package com.aladin.foreground2.core.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
     entities = [WatchedAppEntity::class, LockEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        // v2: watched_apps.label
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 abstract class ForegroundDatabase : RoomDatabase() {
     abstract fun watchedAppDao(): WatchedAppDao
