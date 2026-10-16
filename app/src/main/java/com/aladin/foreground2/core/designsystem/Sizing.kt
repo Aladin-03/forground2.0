@@ -11,6 +11,8 @@ data class Sizing(
     val appIcon: Dp = 40.dp,
     /** Fully expanded breathing circle on the breath overlay. */
     val breathCircle: Dp = 240.dp,
+    /** App icon on the "Block this app?" prompt. */
+    val promptIcon: Dp = 72.dp,
 )
 
 internal val LocalSizing = staticCompositionLocalOf { Sizing() }

@@ -5,9 +5,12 @@ import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.FakeClock
 import com.aladin.foreground2.core.domain.gate.GateEffect.HideOverlay
 import com.aladin.foreground2.core.domain.gate.GateEffect.ShowBreath
+import com.aladin.foreground2.core.domain.gate.GateEffect.ShowDurationPicker
 import com.aladin.foreground2.core.domain.gate.GateEffect.ShowPrompt
+import com.aladin.foreground2.core.domain.gate.GateState.Allowed
 import com.aladin.foreground2.core.domain.gate.GateState.Breathing
 import com.aladin.foreground2.core.domain.gate.GateState.Idle
+import com.aladin.foreground2.core.domain.gate.GateState.PickingDuration
 import com.aladin.foreground2.core.domain.gate.GateState.Prompting
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -42,7 +45,7 @@ class GateCoordinatorTest {
     @Test
     fun `entering a watched app starts a breath`() {
         val updates = front(YOUTUBE)
-        assertEquals(listOf(GateUpdate(YOUTUBE, Idle, Breathing(START), listOf(ShowBreath))), updates)
+        assertEquals(listOf(GateUpdate(YOUTUBE, Idle, Breathing(START), listOf(ShowBreath), "YouTube")), updates)
         assertEquals(Breathing(START), coordinator.stateOf(YOUTUBE))
     }
 
@@ -51,7 +54,7 @@ class GateCoordinatorTest {
         front(YOUTUBE)
         clock.advanceBy(3_000)
         val updates = front(LAUNCHER)
-        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Idle, listOf(HideOverlay))), updates)
+        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Idle, listOf(HideOverlay), "YouTube")), updates)
     }
 
     @Test
@@ -97,7 +100,7 @@ class GateCoordinatorTest {
     fun `unwatching the app mid-breath hides the overlay and forgets it`() {
         front(YOUTUBE)
         val updates = coordinator.handle(GateInput.WatchedChanged(listOf(AppInfo(INSTAGRAM, "Instagram"))))
-        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Idle, listOf(HideOverlay))), updates)
+        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Idle, listOf(HideOverlay), "YouTube")), updates)
         assertEquals(Idle, coordinator.stateOf(YOUTUBE))
         assertTrue(front(LAUNCHER).isEmpty())
     }
@@ -107,7 +110,7 @@ class GateCoordinatorTest {
         front(YOUTUBE)
         clock.advanceBy(TIMING.breathDurationMillis)
         val updates = coordinator.handle(GateInput.BreathFinished(YOUTUBE, clock.now))
-        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Prompting, listOf(ShowPrompt))), updates)
+        assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Prompting, listOf(ShowPrompt), "YouTube")), updates)
     }
 
     @Test
@@ -124,5 +127,73 @@ class GateCoordinatorTest {
     @Test
     fun `a breath finishing for an unwatched app is ignored`() {
         assertTrue(coordinator.handle(GateInput.BreathFinished(WHATSAPP, clock.now)).isEmpty())
+    }
+
+    /** Enters [pkg] and lets the breath finish, leaving it on the prompt. */
+    private fun prompt(pkg: String) {
+        front(pkg)
+        clock.advanceBy(TIMING.breathDurationMillis)
+        coordinator.handle(GateInput.BreathFinished(pkg, clock.now))
+    }
+
+    @Test
+    fun `No hides the overlay and allows the app for the window`() {
+        prompt(YOUTUBE)
+        val updates = coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+        val until = clock.now + TIMING.allowedWindowMillis
+        assertEquals(listOf(GateUpdate(YOUTUBE, Prompting, Allowed(until), listOf(HideOverlay), "YouTube")), updates)
+    }
+
+    @Test
+    fun `an allowed window ending while in front breathes on the spot`() {
+        prompt(YOUTUBE)
+        coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+        val until = clock.now + TIMING.allowedWindowMillis
+        clock.advanceBy(TIMING.allowedWindowMillis - 1)
+        assertTrue(tick().isEmpty())
+        clock.advanceBy(1)
+        assertEquals(
+            listOf(GateUpdate(YOUTUBE, Allowed(until), Breathing(until), listOf(ShowBreath), "YouTube")),
+            tick(),
+        )
+    }
+
+    @Test
+    fun `leaving during the allowed window ends it and the next entry breathes`() {
+        prompt(YOUTUBE)
+        coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+        clock.advanceBy(5_000)
+        front(LAUNCHER)
+        assertEquals(Idle, coordinator.stateOf(YOUTUBE))
+        val updates = front(YOUTUBE)
+        assertEquals(listOf(GateUpdate(YOUTUBE, Idle, Breathing(clock.now), listOf(ShowBreath), "YouTube")), updates)
+    }
+
+    @Test
+    fun `Yes moves the app to the duration picker and leaving returns it to Idle`() {
+        prompt(YOUTUBE)
+        val updates = coordinator.handle(GateInput.AnsweredYes(YOUTUBE))
+        assertEquals(
+            listOf(GateUpdate(YOUTUBE, Prompting, PickingDuration, listOf(ShowDurationPicker), "YouTube")),
+            updates,
+        )
+        assertEquals(
+            listOf(GateUpdate(YOUTUBE, PickingDuration, Idle, listOf(HideOverlay), "YouTube")),
+            front(LAUNCHER),
+        )
+    }
+
+    @Test
+    fun `a second tap after answering is ignored`() {
+        prompt(YOUTUBE)
+        coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+        assertTrue(coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now)).isEmpty())
+        assertTrue(coordinator.handle(GateInput.AnsweredYes(YOUTUBE)).isEmpty())
+    }
+
+    @Test
+    fun `answers for an unwatched app are ignored`() {
+        assertTrue(coordinator.handle(GateInput.AnsweredNo(WHATSAPP, clock.now)).isEmpty())
+        assertTrue(coordinator.handle(GateInput.AnsweredYes(WHATSAPP)).isEmpty())
     }
 }

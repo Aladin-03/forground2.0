@@ -1,7 +1,10 @@
 package com.aladin.foreground2.service.overlay
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ImageBitmap
 import com.aladin.foreground2.core.config.Timing
+import com.aladin.foreground2.core.data.apps.LauncherAppSource
+import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.FakeClock
 import com.aladin.foreground2.core.domain.gate.GateEffect
 import com.aladin.foreground2.core.domain.gate.GateState
@@ -37,16 +40,22 @@ class OverlayEffectsTest {
         }
     }
 
+    private object NoIcons : LauncherAppSource {
+        override suspend fun launcherApps(): List<AppInfo> = emptyList()
+
+        override suspend fun icon(packageName: String): ImageBitmap? = null
+    }
+
     private val host = FakeHost()
-    private val effects = OverlayEffects(host, FakeClock(START), TIMING)
+    private val effects = OverlayEffects(host, FakeClock(START), TIMING, NoIcons)
 
     private fun breath(pkg: String) =
-        GateUpdate(pkg, GateState.Idle, GateState.Breathing(START), listOf(GateEffect.ShowBreath))
+        GateUpdate(pkg, GateState.Idle, GateState.Breathing(START), listOf(GateEffect.ShowBreath), pkg)
 
     private fun update(
         pkg: String,
         vararg effect: GateEffect,
-    ) = GateUpdate(pkg, GateState.Breathing(START), GateState.Idle, effect.toList())
+    ) = GateUpdate(pkg, GateState.Breathing(START), GateState.Idle, effect.toList(), pkg)
 
     @Test
     fun `show breath then hide`() =
@@ -57,11 +66,24 @@ class OverlayEffectsTest {
         }
 
     @Test
-    fun `the prompt just hides the breath for now`() =
+    fun `the prompt replaces the breath and No's HideOverlay removes it`() =
         runTest {
             effects.apply(breath(YOUTUBE))
             effects.apply(update(YOUTUBE, GateEffect.ShowPrompt))
-            assertEquals(listOf("show breath $YOUTUBE", "hide"), host.calls)
+            effects.apply(update(YOUTUBE, GateEffect.HideOverlay))
+            assertEquals(listOf("show breath $YOUTUBE", "show prompt $YOUTUBE", "hide"), host.calls)
+        }
+
+    @Test
+    fun `Yes replaces the prompt with the duration placeholder, which leaving removes`() =
+        runTest {
+            effects.apply(update(YOUTUBE, GateEffect.ShowPrompt))
+            effects.apply(update(YOUTUBE, GateEffect.ShowDurationPicker))
+            effects.apply(update(YOUTUBE, GateEffect.HideOverlay))
+            assertEquals(
+                listOf("show prompt $YOUTUBE", "show duration placeholder $YOUTUBE", "hide"),
+                host.calls,
+            )
         }
 
     @Test

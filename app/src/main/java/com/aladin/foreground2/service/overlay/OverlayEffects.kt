@@ -1,6 +1,7 @@
 package com.aladin.foreground2.service.overlay
 
 import com.aladin.foreground2.core.config.Timing
+import com.aladin.foreground2.core.data.apps.LauncherAppSource
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.domain.gate.GateEffect
 import com.aladin.foreground2.core.domain.gate.GateState
@@ -8,6 +9,8 @@ import com.aladin.foreground2.core.logging.Log
 import com.aladin.foreground2.service.detection.GateInput
 import com.aladin.foreground2.service.detection.GateUpdate
 import com.aladin.foreground2.service.overlay.ui.BreathScreen
+import com.aladin.foreground2.service.overlay.ui.DurationPlaceholderScreen
+import com.aladin.foreground2.service.overlay.ui.PromptScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -28,11 +31,12 @@ class OverlayEffects
         private val host: OverlayHost,
         private val clock: Clock,
         private val timing: Timing,
+        private val launcherApps: LauncherAppSource,
     ) {
         private val events = Channel<GateInput>(Channel.UNLIMITED)
         private var shownFor: String? = null
 
-        /** Overlay events (e.g. the breath finishing), to be fed to the coordinator with everything else. */
+        /** Overlay events (breath finished, prompt answered), to be fed to the coordinator with everything else. */
         val inputs: Flow<GateInput> = events.receiveAsFlow()
 
         suspend fun apply(update: GateUpdate) =
@@ -54,9 +58,9 @@ class OverlayEffects
             when (effect) {
                 GateEffect.ShowBreath -> showBreath(pkg, update.to)
                 GateEffect.HideOverlay -> hide(pkg)
-                // The prompt arrives in the next slice; until then the breath just ends and the app is usable.
-                GateEffect.ShowPrompt -> hide(pkg)
-                GateEffect.ShowDurationPicker, is GateEffect.ShowLockScreen, is GateEffect.PersistLock ->
+                GateEffect.ShowPrompt -> showPrompt(pkg, update.label)
+                GateEffect.ShowDurationPicker -> showDurationPlaceholder(pkg)
+                is GateEffect.ShowLockScreen, is GateEffect.PersistLock ->
                     Log.w(Log.Area.Overlay) { "$effect for $pkg not implemented yet" }
             }
         }
@@ -77,6 +81,33 @@ class OverlayEffects
                     clock = clock,
                     onFinished = { now -> events.trySend(GateInput.BreathFinished(pkg, now)) },
                 )
+            }
+        }
+
+        /** Taps are answered by the gate (HideOverlay or ShowDurationPicker); a repeated tap is ignored there. */
+        private fun showPrompt(
+            pkg: String,
+            label: String,
+        ) {
+            shownFor = pkg
+            host.show("prompt $pkg") {
+                PromptScreen(
+                    label = label,
+                    loadIcon = { launcherApps.icon(pkg) },
+                    onYes = { events.trySend(GateInput.AnsweredYes(pkg)) },
+                    onNo = { events.trySend(GateInput.AnsweredNo(pkg, clock.nowMillis())) },
+                )
+            }
+        }
+
+        /**
+         * Placeholder until the duration picker exists. Close only removes the overlay: the gate stays in
+         * PickingDuration until the user leaves the app, which returns it to Idle.
+         */
+        private fun showDurationPlaceholder(pkg: String) {
+            shownFor = pkg
+            host.show("duration placeholder $pkg") {
+                DurationPlaceholderScreen(onClose = { hide(pkg) })
             }
         }
 

@@ -31,14 +31,29 @@ sealed interface GateInput {
         val packageName: String,
         val at: Long,
     ) : GateInput
+
+    /** The user tapped No on [packageName]'s prompt at [at]. */
+    data class AnsweredNo(
+        val packageName: String,
+        val at: Long,
+    ) : GateInput
+
+    /** The user tapped Yes on [packageName]'s prompt. */
+    data class AnsweredYes(
+        val packageName: String,
+    ) : GateInput
 }
 
-/** One gate moved: [packageName] went [from] -> [to], and the caller must carry out [effects]. */
+/**
+ * One gate moved: [packageName] (shown to the user as [label]) went [from] -> [to], and the caller must carry out
+ * [effects].
+ */
 data class GateUpdate(
     val packageName: String,
     val from: GateState,
     val to: GateState,
     val effects: List<GateEffect>,
+    val label: String,
 )
 
 /**
@@ -67,13 +82,16 @@ class GateCoordinator
                     listOfNotNull(
                         front?.takeIf { it in watched }?.let { send(it, GateEvent.Tick(input.at)) },
                     )
-                is GateInput.BreathFinished ->
-                    listOfNotNull(
-                        input.packageName
-                            .takeIf { it in watched }
-                            ?.let { send(it, GateEvent.BreathFinished(input.at)) },
-                    )
+                is GateInput.BreathFinished -> sendIfWatched(input.packageName, GateEvent.BreathFinished(input.at))
+                is GateInput.AnsweredNo -> sendIfWatched(input.packageName, GateEvent.AnsweredNo(input.at))
+                is GateInput.AnsweredYes -> sendIfWatched(input.packageName, GateEvent.AnsweredYes)
             }
+
+        /** Overlay events can arrive after the app was unwatched; those are dropped. */
+        private fun sendIfWatched(
+            packageName: String,
+            event: GateEvent,
+        ): List<GateUpdate> = listOfNotNull(packageName.takeIf { it in watched }?.let { send(it, event) })
 
         private fun onFrontChanged(change: FrontAppChanged): List<GateUpdate> {
             val previous = front
@@ -105,11 +123,12 @@ class GateCoordinator
             val transition = GateMachine.reduce(from, event, timing)
             if (transition.state == from && transition.effects.isEmpty()) return null
             states[packageName] = transition.state
+            val label = watched[packageName]?.label ?: packageName
             Log.i(Log.Area.Gate) {
-                "${watched[packageName]?.label ?: packageName} ${from.name} -> ${transition.state.name}, " +
+                "$label ${from.name} -> ${transition.state.name}, " +
                     "effects=${transition.effects}"
             }
-            return GateUpdate(packageName, from, transition.state, transition.effects)
+            return GateUpdate(packageName, from, transition.state, transition.effects, label)
         }
 
         private val GateState.name: String get() = this::class.simpleName.orEmpty()
