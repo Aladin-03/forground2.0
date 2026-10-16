@@ -11,6 +11,8 @@ import com.aladin.foreground2.feature.onboarding.OnboardingRoute
 import com.aladin.foreground2.feature.onboarding.ui.OnboardingScreen
 import com.aladin.foreground2.feature.picker.PickerRoute
 import com.aladin.foreground2.feature.picker.ui.PickerScreen
+import com.aladin.foreground2.feature.stats.StatsRoute
+import com.aladin.foreground2.feature.stats.ui.StatsScreen
 
 @Composable
 fun AppNavHost(
@@ -26,7 +28,13 @@ fun AppNavHost(
                 },
             )
         }
-        composable<HomeRoute> { HomeScreen(onOpenPicker = { navController.navigate(PickerRoute) }) }
+        composable<HomeRoute> {
+            HomeScreen(
+                onOpenPicker = { navController.navigate(PickerRoute) },
+                onOpenStats = { navController.navigate(StatsRoute) },
+            )
+        }
         composable<PickerRoute> { PickerScreen() }
+        composable<StatsRoute> { StatsScreen() }
     }
 }

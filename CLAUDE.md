@@ -12,7 +12,7 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 | Package | What belongs there |
 |---|---|
 | `core/designsystem/` | Theme, colour (`Palette`), spacing (`ForegroundTheme.spacing`), sizes (`ForegroundTheme.sizing`), typography tokens |
-| `core/domain/` | Pure Kotlin: models, gate state machine, `Clock` |
+| `core/domain/` | Pure Kotlin: models, gate state machine, `Clock`, daily usage stats (`usage/`) |
 | `core/data/db/` | Room database, entities, DAOs |
 | `core/data/apps/` | Installed-app sources via PackageManager (launcher app list, icons) |
 | `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs |
@@ -20,7 +20,7 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 | `core/ui/` | Compose helpers shared by app screens and overlays (app icon, lock countdown text, unlock-time format) |
 | `core/logging/` | `Log.kt`, the only logger |
 | `core/config/` | `Timing.kt` (breath, window, poll and permission-check intervals from BuildConfig) |
-| `feature/{onboarding,picker,home}/` | ViewModel + route; Composables in `ui/` |
+| `feature/{onboarding,picker,home,stats}/` | ViewModel + route; Composables in `ui/` |
 | `service/detection/` | Foreground service + front-app detection (UsageStatsManager) |
 | `service/overlay/` | Overlay window host + overlay screens |
 | `di/` | Hilt modules |

@@ -16,6 +16,10 @@ Personal Android app (sideloaded, single user). Every time the user enters a **w
 8. **Independent locks.** Each app has its own lock. When it expires, the app goes back to rule 2.
 9. **Persistence.** A lock is stored as its end time (epoch ms). Locks survive reboots and process death. The allowed window is in memory only; losing it just means a fresh breath.
 
+## Daily stats
+
+A Stats screen, opened from Home, shows today's unlocks, total screen time and per-app foreground time, most used first. "Today" starts at local midnight. Computed from the same usage log as detection (`queryEvents` since midnight): an unlock is a `KEYGUARD_HIDDEN` event; app time comes from `ACTIVITY_RESUMED`/`ACTIVITY_PAUSED` pairs, clipped at midnight, with a still-open session counted up to now. The default launcher, system UI and this app get no time. No widgets.
+
 ## Out of scope
 
 Accessibility service · clock-tamper protection · broken-lock logging · special handling for browsers · any task/credits/planner features.

@@ -49,9 +49,13 @@ import com.aladin.foreground2.feature.home.WatchedApp
 // Lazy-list keys are per section, since an app can be in both lists.
 private enum class Section { Locked, Watched }
 
+/** Screens Home links to. */
+private enum class HomeLink { Picker, Stats }
+
 @Composable
 fun HomeScreen(
     onOpenPicker: () -> Unit,
+    onOpenStats: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -67,7 +71,12 @@ fun HomeScreen(
                 HomeFix.StartService -> viewModel.onStartService()
             }
         },
-        onOpenPicker = onOpenPicker,
+        onOpen = { link ->
+            when (link) {
+                HomeLink.Picker -> onOpenPicker()
+                HomeLink.Stats -> onOpenStats()
+            }
+        },
         loadIcon = viewModel::loadIcon,
         modifier = modifier,
     )
@@ -78,7 +87,7 @@ private fun HomeContent(
     state: HomeUiState,
     clock: Clock,
     onFix: (HomeFix) -> Unit,
-    onOpenPicker: () -> Unit,
+    onOpen: (HomeLink) -> Unit,
     loadIcon: suspend (String) -> ImageBitmap?,
     modifier: Modifier = Modifier,
 ) {
@@ -97,8 +106,13 @@ private fun HomeContent(
         }
         item { StatusCard(state = state, onFix = onFix) }
         item {
-            Button(onClick = onOpenPicker, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { onOpen(HomeLink.Picker) }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.home_open_picker))
+            }
+        }
+        item {
+            OutlinedButton(onClick = { onOpen(HomeLink.Stats) }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.home_open_stats))
             }
         }
         item { SectionTitle(stringResource(R.string.home_locks_title)) }
@@ -276,7 +290,7 @@ private fun HomeContentPreview() {
                 ),
             clock = { 0L },
             onFix = {},
-            onOpenPicker = {},
+            onOpen = {},
             loadIcon = { null },
         )
     }

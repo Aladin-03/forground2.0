@@ -7,6 +7,8 @@ import com.aladin.foreground2.core.data.repo.LockRepository
 import com.aladin.foreground2.core.data.repo.RoomLockRepository
 import com.aladin.foreground2.core.data.repo.RoomWatchedAppsRepository
 import com.aladin.foreground2.core.data.repo.SettingsRepository
+import com.aladin.foreground2.core.data.repo.SystemUsageStatsRepository
+import com.aladin.foreground2.core.data.repo.UsageStatsRepository
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
 import dagger.Binds
 import dagger.Module
@@ -24,6 +26,9 @@ interface RepoModule {
 
     @Binds
     fun bindLockRepository(impl: RoomLockRepository): LockRepository
+
+    @Binds
+    fun bindUsageStatsRepository(impl: SystemUsageStatsRepository): UsageStatsRepository
 
     @Binds
     fun bindLauncherAppSource(impl: PackageManagerLauncherAppSource): LauncherAppSource

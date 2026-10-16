@@ -23,6 +23,7 @@ object Log {
         DB("DB"),
         Perm("Perm"),
         UI("UI"),
+        Stats("Stats"),
     }
 
     @Volatile

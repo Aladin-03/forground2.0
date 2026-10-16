@@ -3,6 +3,7 @@
   <string name="app_name">Foreground 2.0</string>
 
   <string name="home_open_picker">Watched apps</string>
+  <string name="home_open_stats">Today\'s usage</string>
   <string name="home_status_ok">Foreground is on and has every permission it needs.</string>
   <!-- %1$s is a permission name, e.g. Usage access, or several separated by commas. -->
   <string name="home_status_missing">%1$s is off, so watched apps aren\'t being paused.</string>
@@ -20,6 +21,18 @@
   <string name="picker_title">Watched apps</string>
   <string name="picker_search_hint">Search apps</string>
   <string name="picker_empty">No apps match</string>
+
+  <string name="stats_title">Today</string>
+  <string name="stats_unlocks">Unlocks</string>
+  <string name="stats_screen_time">Screen time</string>
+  <string name="stats_apps_title">Apps</string>
+  <string name="stats_apps_empty">No app use recorded today.</string>
+  <!-- Hours, minutes of use, e.g. 3h 7m. -->
+  <string name="stats_duration_hours">%1$dh %2$dm</string>
+  <!-- Minutes of use, e.g. 7m. -->
+  <string name="stats_duration_minutes">%1$dm</string>
+  <!-- Some use, but less than a minute. -->
+  <string name="stats_duration_under_minute">&lt;1m</string>
 
   <string name="onboarding_title">Set up Foreground</string>
   <string name="onboarding_intro">Foreground needs a few permissions to notice when you open a watched app and pause it. Tap Grant on each one, switch it on, then come back here.</string>
