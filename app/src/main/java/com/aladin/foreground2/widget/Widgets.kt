@@ -32,6 +32,7 @@ import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundWidgetColors
 import com.aladin.foreground2.core.designsystem.WidgetTokens
 import com.aladin.foreground2.core.ui.formatUsageDuration
+import com.aladin.foreground2.feature.stats.StatsTab
 
 /** Small widget: "Unlocks today" and the count. */
 class UnlocksWidget : GlanceAppWidget() {
@@ -45,7 +46,7 @@ class UnlocksWidget : GlanceAppWidget() {
         val initial = refresher.current()
         provideContent {
             val snapshot by refresher.snapshot.collectAsState()
-            WidgetFrame {
+            WidgetFrame(StatsTab.Unlocks) {
                 Label(LocalContext.current.getString(R.string.widget_unlocks_label))
                 Value((snapshot ?: initial).unlocks.toString())
             }
@@ -75,7 +76,7 @@ private fun ScreenTimeContent(snapshot: WidgetSnapshot) {
     val context = LocalContext.current
     val size = LocalSize.current
     val medium = size.width >= WidgetTokens.medium.width && size.height >= WidgetTokens.medium.height
-    WidgetFrame {
+    WidgetFrame(StatsTab.ScreenTime) {
         Label(context.getString(R.string.widget_screen_time_label))
         Value(formatUsageDuration(context, snapshot.totalMillis))
         if (medium) {
@@ -106,9 +107,12 @@ private fun ScreenTimeContent(snapshot: WidgetSnapshot) {
     }
 }
 
-/** Themed rounded background; a tap opens the Stats screen. */
+/** Themed rounded background; a tap opens the Stats screen on [tab]. */
 @Composable
-private fun WidgetFrame(content: @Composable () -> Unit) {
+private fun WidgetFrame(
+    tab: StatsTab,
+    content: @Composable () -> Unit,
+) {
     val context = LocalContext.current
     GlanceTheme(colors = ForegroundWidgetColors) {
         Column(
@@ -118,7 +122,7 @@ private fun WidgetFrame(content: @Composable () -> Unit) {
                     .background(GlanceTheme.colors.background)
                     .cornerRadius(WidgetTokens.cornerRadius)
                     .padding(WidgetTokens.padding)
-                    .clickable(actionStartActivity(MainActivity.openStatsIntent(context))),
+                    .clickable(actionStartActivity(MainActivity.openStatsIntent(context, tab))),
             verticalAlignment = Alignment.CenterVertically,
         ) { content() }
     }

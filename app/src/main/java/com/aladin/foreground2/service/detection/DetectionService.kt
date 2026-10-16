@@ -7,7 +7,10 @@ import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
+import com.aladin.foreground2.core.data.usage.HistoryTrigger
+import com.aladin.foreground2.core.data.usage.UsageHistory
 import com.aladin.foreground2.core.domain.Clock
+import com.aladin.foreground2.core.domain.ZoneProvider
 import com.aladin.foreground2.core.logging.Log
 import com.aladin.foreground2.core.permissions.Permission
 import com.aladin.foreground2.core.permissions.PermissionChecker
@@ -45,7 +48,8 @@ import javax.inject.Inject
  * START_STICKY, so the system recreates it after killing the process; [BootReceiver] starts it after a reboot. Every
  * start rereads the locks from Room. While running it rechecks the required permissions and posts an alert if one is
  * revoked (detection or overlays silently stop working otherwise), clearing it once they are back. It also drives
- * the home-screen widget refreshes ([WidgetRefreshTriggers]): on unlock and periodically while unlocked.
+ * the home-screen widget refreshes ([WidgetRefreshTriggers]): on unlock and periodically while unlocked, and saves
+ * each finished day into the usage history on its first poll after local midnight.
  */
 @AndroidEntryPoint
 class DetectionService : Service() {
@@ -75,6 +79,12 @@ class DetectionService : Service() {
 
     @Inject lateinit var widgetRefresher: WidgetRefresher
 
+    @Inject lateinit var usageHistory: UsageHistory
+
+    @Inject lateinit var zones: ZoneProvider
+
+    private val dayWatcher by lazy { DayChangeWatcher(zones) }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
 
@@ -100,6 +110,7 @@ class DetectionService : Service() {
             Log.i(Log.Area.Detect) { "service started (restart=${intent == null})" }
             job = scope.launch { run() }
             scope.launch { watchPermissions() }
+            scope.launch { usageHistory.catchUp(HistoryTrigger.ServiceStart) }
             scope.launch { widgetTriggers.triggers(screenState.unlocked).collect { widgetRefresher.refresh(it) } }
         }
         return START_STICKY
@@ -133,6 +144,10 @@ class DetectionService : Service() {
         // Overlay events keep flowing while the screen is off, so a breath can still finish then.
         merge(watched.drop(1).map(GateInput::WatchedChanged), polling, overlays.inputs).collect { input ->
             coordinator.handle(input).forEach { overlays.apply(it) }
+            // The first poll after local midnight saves the day that just ended.
+            if (input is GateInput.Tick && dayWatcher.dayChanged(input.at)) {
+                scope.launch { usageHistory.catchUp(HistoryTrigger.Midnight, rewriteYesterday = true) }
+            }
         }
     }
 

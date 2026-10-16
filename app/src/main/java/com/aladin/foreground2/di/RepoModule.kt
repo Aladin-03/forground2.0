@@ -10,6 +10,10 @@ import com.aladin.foreground2.core.data.repo.SettingsRepository
 import com.aladin.foreground2.core.data.repo.SystemUsageStatsRepository
 import com.aladin.foreground2.core.data.repo.UsageStatsRepository
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
+import com.aladin.foreground2.core.data.usage.SystemUsageEventReader
+import com.aladin.foreground2.core.data.usage.UsageEventReader
+import com.aladin.foreground2.core.data.usage.UsageHistory
+import com.aladin.foreground2.core.data.usage.UsageHistoryRecorder
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -29,6 +33,12 @@ interface RepoModule {
 
     @Binds
     fun bindUsageStatsRepository(impl: SystemUsageStatsRepository): UsageStatsRepository
+
+    @Binds
+    fun bindUsageEventReader(impl: SystemUsageEventReader): UsageEventReader
+
+    @Binds
+    fun bindUsageHistory(impl: UsageHistoryRecorder): UsageHistory
 
     @Binds
     fun bindLauncherAppSource(impl: PackageManagerLauncherAppSource): LauncherAppSource

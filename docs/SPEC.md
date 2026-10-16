@@ -18,10 +18,24 @@ Personal Android app (sideloaded, single user). Every time the user enters a **w
 
 ## Daily stats
 
-A Stats screen, opened from Home, shows today's unlocks, total screen time and per-app foreground time, most used first. "Today" starts at local midnight. Computed from the same usage log as detection (`queryEvents` since midnight): an unlock is a `KEYGUARD_HIDDEN` event; app time comes from `ACTIVITY_RESUMED`/`ACTIVITY_PAUSED` pairs, clipped at midnight, with a still-open session counted up to now. The default launcher, system UI and this app get no time. 
+A Stats screen, opened from Home or a widget, shows unlocks and screen time. "A day" runs from local midnight to the next one, in the device's current time zone. Stats are computed from the same usage log as detection (`queryEvents`): an unlock is a `KEYGUARD_HIDDEN` event, also counted per local hour. App time comes from `ACTIVITY_RESUMED`/`ACTIVITY_PAUSED` pairs, clipped at midnight, with a still-open session counted up to now. The default launcher, system UI and this app get no time.
+
+**History.** Android keeps its event log only for a limited time, so each finished day is saved to Room (`daily_stats`, `daily_app_usage`, upserted by date). Days are saved:
+- by the detection service on its first poll after local midnight, which rewrites yesterday;
+- by a daily WorkManager job as a fallback, which also rewrites yesterday;
+- on app start, service start and opening Stats, which backfill every missing day in the last 30 that is still fully in the event log.
+
+All of these are safe to repeat. Today is always live from the log; past days come from Room.
+
+**Screen.** There are two tabs, Unlocks and Screen time, over a pager of Monday–Sunday weeks. The pager opens on the current week, and swiping right goes back to the earliest week with data.
+- Each week shows its date range and daily average, with an empty state if it has no data.
+- **Screen time:** one stacked column per day, split into the week's top 5 apps plus a grey "Other". An app's colour comes from a fixed palette and stays the same on every week. A legend under the chart lists the colours.
+- **Unlocks:** one column per day with the count above it.
+- Today's column is highlighted. Tapping a column selects that day: Screen time then shows the day's total and full app list, and Unlocks shows the day's total and 24 hourly bars. The default selection is today on the current week and Sunday on past weeks.
+
 ### Widgets
 
-Two Glance home-screen widgets in the app's colours (light and dark), both opening the Stats screen when tapped:
+Two Glance home-screen widgets in the app's colours (light and dark), both opening the Stats screen (matching tab, current week, today) when tapped:
 **Unlocks** ("Unlocks today" + count) and **Screen time** ("Screen time today" + total; at medium size, also the top three apps with times).
 
 Refreshes come from the detection service: on every unlock, then every 5 minutes while unlocked, plus one just after local midnight so both reset on time. `updatePeriodMillis` (30 min) is only a fallback. Nothing refreshes while the screen is off, and each widget refreshes at most once a minute (a throttled refresh is deferred until allowed; the first refresh of a new day always goes through).

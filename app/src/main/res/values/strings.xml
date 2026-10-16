@@ -22,11 +22,26 @@
   <string name="picker_search_hint">Search apps</string>
   <string name="picker_empty">No apps match</string>
 
-  <string name="stats_title">Today</string>
-  <string name="stats_unlocks">Unlocks</string>
-  <string name="stats_screen_time">Screen time</string>
-  <string name="stats_apps_title">Apps</string>
-  <string name="stats_apps_empty">No app use recorded today.</string>
+  <string name="stats_title">Usage</string>
+  <string name="stats_tab_unlocks">Unlocks</string>
+  <string name="stats_tab_screen_time">Screen time</string>
+  <!-- A week's first and last day, e.g. 13 Oct – 19 Oct. -->
+  <string name="stats_week_range">%1$s – %2$s</string>
+  <!-- %1$s is a duration, e.g. 3h 7m. -->
+  <string name="stats_average_screen_time">Daily average: %1$s</string>
+  <string name="stats_average_unlocks">Daily average: %1$d unlocks</string>
+  <string name="stats_week_empty">No data for this week.</string>
+  <string name="stats_day_empty">No data for this day.</string>
+  <string name="stats_apps_empty">No app use recorded.</string>
+  <!-- Legend entry for every app outside the week\'s top five. -->
+  <string name="stats_other">Other</string>
+  <string name="stats_by_hour">By hour</string>
+  <!-- An hour of the day under the hourly chart, e.g. 06. -->
+  <string name="stats_hour_label">%1$02d</string>
+  <plurals name="stats_unlocks_count">
+    <item quantity="one">%d unlock</item>
+    <item quantity="other">%d unlocks</item>
+  </plurals>
   <!-- Hours, minutes of use, e.g. 3h 7m. -->
   <string name="stats_duration_hours">%1$dh %2$dm</string>
   <!-- Minutes of use, e.g. 7m. -->

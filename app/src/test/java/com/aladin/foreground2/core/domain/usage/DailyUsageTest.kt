@@ -2,8 +2,10 @@ package com.aladin.foreground2.core.domain.usage
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 private const val MINUTE = 60_000L
 private const val HOUR = 60 * MINUTE
@@ -40,7 +42,7 @@ private fun times(vararg events: UsageEvent) = foregroundTimes(events.toList(), 
 
 class UnlockCountTest {
     @Test
-    fun `counts keyguard-hidden events today only`() {
+    fun `counts keyguard-hidden events in the day only`() {
         val events =
             listOf(
                 keyguardHidden(MIDNIGHT - MINUTE),
@@ -60,8 +62,10 @@ class UnlockCountTest {
     }
 
     @Test
-    fun `counts unlocks at midnight and at now`() {
-        assertEquals(2, countUnlocks(listOf(keyguardHidden(MIDNIGHT), keyguardHidden(NOW)), MIDNIGHT, NOW))
+    fun `the range is half-open, so an unlock at the next midnight belongs to the next day`() {
+        val events = listOf(keyguardHidden(MIDNIGHT), keyguardHidden(NOW))
+        assertEquals(1, countUnlocks(events, MIDNIGHT, NOW))
+        assertEquals(1, countUnlocks(events, NOW, NOW + HOUR))
     }
 
     @Test
@@ -225,8 +229,9 @@ class DailyUsageTest {
                 paused(YOUTUBE, HOUR + 45 * MINUTE),
                 resumed(LAUNCHER, HOUR + 45 * MINUTE),
             )
-        val usage = dailyUsage(events, MIDNIGHT, NOW, EXCLUDED)
+        val usage = dailyUsage(events, LocalDate.of(1970, 1, 1), ZoneOffset.UTC, NOW, EXCLUDED)
         assertEquals(1, usage.unlocks)
+        assertEquals(1, usage.unlocksByHour[0])
         assertEquals(listOf(AppUsage(YOUTUBE, 40 * MINUTE), AppUsage(CHROME, 5 * MINUTE)), usage.apps)
         assertEquals(45 * MINUTE, usage.totalMillis)
     }
@@ -241,6 +246,49 @@ class DailyUsageTest {
         val midnight = at(0)
         assertEquals(midnight, startOfDayMillis(now, zone))
         assertEquals(midnight, startOfDayMillis(midnight, zone))
+    }
+}
+
+class UnlocksByHourTest {
+    @Test
+    fun `buckets unlocks by local hour in the device zone`() {
+        val zone = ZoneId.of("Asia/Kolkata")
+        val start = startOfDayMillis(LocalDate.of(2026, 10, 16), zone)
+        val events =
+            listOf(
+                keyguardHidden(start),
+                keyguardHidden(start + 59 * MINUTE),
+                keyguardHidden(start + 13 * HOUR + 30 * MINUTE),
+                keyguardHidden(start + 24 * HOUR - 1),
+            )
+        val hours = unlocksByHour(events, start, start + 24 * HOUR, zone)
+        assertEquals(24, hours.size)
+        assertEquals(2, hours[0])
+        assertEquals(1, hours[13])
+        assertEquals(1, hours[23])
+        assertEquals(4, hours.sum())
+    }
+
+    @Test
+    fun `the same instants fall in different hours in another zone`() {
+        val start = startOfDayMillis(LocalDate.of(2026, 10, 16), ZoneOffset.UTC)
+        val events = listOf(keyguardHidden(start + 10 * HOUR))
+        assertEquals(1, unlocksByHour(events, start, start + 24 * HOUR, ZoneOffset.UTC)[10])
+        // 10:00 UTC is 15:30 in India.
+        assertEquals(1, unlocksByHour(events, start, start + 24 * HOUR, ZoneId.of("Asia/Kolkata"))[15])
+    }
+
+    @Test
+    fun `on the day clocks go back the repeated hour shares one slot`() {
+        val zone = ZoneId.of("Europe/London")
+        val day = LocalDate.of(2026, 10, 25)
+        val start = startOfDayMillis(day, zone)
+        val end = startOfDayMillis(day.plusDays(1), zone)
+        assertEquals(25 * HOUR, end - start)
+        // 01:30 BST and 01:30 GMT, an hour apart.
+        val events = listOf(keyguardHidden(start + 90 * MINUTE), keyguardHidden(start + 150 * MINUTE))
+        val hours = unlocksByHour(events, start, end, zone)
+        assertEquals(2, hours[1])
     }
 }
 

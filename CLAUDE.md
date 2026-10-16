@@ -4,16 +4,17 @@ Personal Android app: entering a watched app triggers a breathing pause, then th
 window or locks the app. Full behaviour and technical approach: **docs/SPEC.md** (read it before changing behaviour).
 
 Single `app` module, package `com.aladin.foreground2`. Kotlin, Compose (Material 3), Hilt, Room, DataStore
-Preferences, Navigation Compose (type-safe `@Serializable` routes), Glance (widgets), KSP. minSdk 29, target/compile 35.
+Preferences, Navigation Compose (type-safe `@Serializable` routes), Glance (widgets), WorkManager, KSP. minSdk 29, target/compile 35.
 All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooling (custom detekt rules), not app code.
 
 ## Package map (`app/src/main/java/com/aladin/foreground2/`)
 
 | Package | What belongs there |
 |---|---|
-| `core/designsystem/` | Theme, colour (`Palette`), spacing (`ForegroundTheme.spacing`), sizes (`ForegroundTheme.sizing`), typography tokens |
+| `core/designsystem/` | Theme, colour (`Palette`, chart palette `ChartColors`), widget tokens, spacing (`ForegroundTheme.spacing`), sizes (`ForegroundTheme.sizing`), typography tokens |
 | `core/domain/` | Pure Kotlin: models, gate state machine, `Clock`, daily usage stats (`usage/`) |
 | `core/data/db/` | Room database, entities, DAOs |
+| `core/data/usage/` | Usage log reader (UsageStatsManager), daily-history recorder into Room, its WorkManager fallback |
 | `core/data/apps/` | Installed-app sources via PackageManager (launcher app list, icons) |
 | `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs |
 | `core/permissions/` | Permission checks, their display names, and Settings deep-link intents |

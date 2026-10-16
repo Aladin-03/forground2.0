@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
@@ -16,6 +17,7 @@ import com.aladin.foreground2.core.permissions.PermissionChecker
 import com.aladin.foreground2.core.permissions.missingRequired
 import com.aladin.foreground2.feature.home.HomeRoute
 import com.aladin.foreground2.feature.onboarding.OnboardingRoute
+import com.aladin.foreground2.feature.stats.StatsTab
 import com.aladin.foreground2.service.detection.DetectionServiceController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -45,8 +47,12 @@ class MainActivity : ComponentActivity() {
                     ) { "launch -> ${if (missing.isEmpty()) "Home" else "Onboarding missing=$missing"}" }
                     missing.isNotEmpty()
                 }
-            // A widget tap: Stats on top of Home, so Back lands on Home. Ignored while onboarding is needed.
-            val openStats = rememberSaveable { !needsOnboarding && intent.getBooleanExtra(EXTRA_OPEN_STATS, false) }
+            // A widget tap: Stats (on its tab) over Home, so Back lands on Home. Ignored while onboarding is needed.
+            // AppNavHost opens it once and remembers that across rotation.
+            val openStats =
+                remember {
+                    intent.getStringExtra(EXTRA_STATS_TAB)?.takeIf { !needsOnboarding }?.let(StatsTab::valueOf)
+                }
             ForegroundTheme {
                 Scaffold { innerPadding ->
                     AppNavHost(
@@ -60,12 +66,18 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val EXTRA_OPEN_STATS = "com.aladin.foreground2.OPEN_STATS"
+        private const val EXTRA_STATS_TAB = "com.aladin.foreground2.STATS_TAB"
 
-        /** Starts the app afresh on the Stats screen (over Home). Used by the home-screen widgets. */
-        fun openStatsIntent(context: Context): Intent =
+        /**
+         * Starts the app afresh on the Stats screen's [tab] (over Home), on the current week with today selected.
+         * Used by the home-screen widgets.
+         */
+        fun openStatsIntent(
+            context: Context,
+            tab: StatsTab,
+        ): Intent =
             Intent(context, MainActivity::class.java)
-                .putExtra(EXTRA_OPEN_STATS, true)
+                .putExtra(EXTRA_STATS_TAB, tab.name)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     }
 }

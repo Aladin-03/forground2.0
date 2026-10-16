@@ -1,59 +1,102 @@
 package com.aladin.foreground2.core.domain.usage
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
-/** Foreground time of one app today. */
+/** Foreground time of one app on one day. */
 data class AppUsage(
     val packageName: String,
     val foregroundMillis: Long,
 )
 
-/** Today's stats: unlocks, and foreground time per app, most used first. */
+/** One day's stats: unlocks (in total and per local hour), and foreground time per app, most used first. */
 data class DailyUsage(
-    val unlocks: Int,
+    val date: LocalDate,
+    val unlocksByHour: List<Int>,
     val apps: List<AppUsage>,
 ) {
+    val unlocks: Int get() = unlocksByHour.sum()
     val totalMillis: Long get() = apps.sumOf { it.foregroundMillis }
+
+    companion object {
+        const val HOURS = 24
+
+        fun empty(date: LocalDate) = DailyUsage(date, List(HOURS) { 0 }, emptyList())
+    }
 }
 
 /** Local midnight (epoch ms) of the day containing [nowMillis] in [zone]. */
 fun startOfDayMillis(
     nowMillis: Long,
     zone: ZoneId,
-): Long =
-    Instant
-        .ofEpochMilli(nowMillis)
-        .atZone(zone)
-        .toLocalDate()
-        .atStartOfDay(zone)
-        .toInstant()
-        .toEpochMilli()
+): Long = startOfDayMillis(localDate(nowMillis, zone), zone)
 
-/** Unlocks and per-app time between [startOfDay] and [now]; [excluded] packages get no time. */
+/** Local midnight (epoch ms) starting [date] in [zone]. */
+fun startOfDayMillis(
+    date: LocalDate,
+    zone: ZoneId,
+): Long = date.atStartOfDay(zone).toInstant().toEpochMilli()
+
+/** The local date at [millis] in [zone]. */
+fun localDate(
+    millis: Long,
+    zone: ZoneId,
+): LocalDate = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+
+/**
+ * [date]'s stats from its local midnight up to [until] (exclusive): now for today, the next midnight for a finished
+ * day. [excluded] packages get no time.
+ */
 fun dailyUsage(
     events: List<UsageEvent>,
-    startOfDay: Long,
-    now: Long,
+    date: LocalDate,
+    zone: ZoneId,
+    until: Long,
     excluded: Set<String>,
-): DailyUsage =
-    DailyUsage(
-        unlocks = countUnlocks(events, startOfDay, now),
+): DailyUsage {
+    val start = startOfDayMillis(date, zone)
+    return DailyUsage(
+        date = date,
+        unlocksByHour = unlocksByHour(events, start, until, zone),
         apps =
-            foregroundTimes(events, startOfDay, now, excluded)
+            foregroundTimes(events, start, until, excluded)
                 .map { (pkg, millis) -> AppUsage(pkg, millis) }
-                .sortedByDescending { it.foregroundMillis },
+                .sortedWith(compareByDescending<AppUsage> { it.foregroundMillis }.thenBy { it.packageName }),
     )
+}
 
-/** Keyguard-hidden events in `[startOfDay, now]`. An event delivered twice counts once. */
+/** Keyguard-hidden events in `[start, end)`. An event delivered twice counts once. */
 fun countUnlocks(
     events: List<UsageEvent>,
-    startOfDay: Long,
-    now: Long,
-): Int =
+    start: Long,
+    end: Long,
+): Int = unlockTimes(events, start, end).size
+
+/**
+ * Unlocks in `[start, end)` by the local hour (0-23, in [zone]) they happened in. On a day the clocks go back, the
+ * repeated hour's unlocks land in the same slot.
+ */
+fun unlocksByHour(
+    events: List<UsageEvent>,
+    start: Long,
+    end: Long,
+    zone: ZoneId,
+): List<Int> {
+    val hours = IntArray(DailyUsage.HOURS)
+    unlockTimes(events, start, end).forEach { hours[Instant.ofEpochMilli(it).atZone(zone).hour]++ }
+    return hours.toList()
+}
+
+private fun unlockTimes(
+    events: List<UsageEvent>,
+    start: Long,
+    end: Long,
+): List<Long> =
     events
         .distinct()
-        .count { it.type == UsageEventType.KeyguardHidden && it.timestamp in startOfDay..now }
+        .filter { it.type == UsageEventType.KeyguardHidden && it.timestamp >= start && it.timestamp < end }
+        .map { it.timestamp }
 
 /**
  * Foreground time per package from resumed/paused pairs, clipped to `[startOfDay, now]`.
