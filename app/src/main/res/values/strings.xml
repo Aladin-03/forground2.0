@@ -10,8 +10,12 @@
   <string name="home_status_battery">Foreground is on, but battery use is restricted, so Android may stop it in the background.</string>
   <string name="home_fix">Fix</string>
   <string name="home_start">Start</string>
-  <string name="home_locks_title">Locked apps</string>
+  <string name="home_locks_title">Locked</string>
   <string name="home_locks_empty">No apps are locked.</string>
+  <string name="home_watched_title">Watched</string>
+  <string name="home_watched_empty">No apps are watched.</string>
+  <string name="home_watched_locked">Locked</string>
+  <string name="home_watched_breath">Breath on open</string>
 
   <string name="picker_title">Watched apps</string>
   <string name="picker_search_hint">Search apps</string>

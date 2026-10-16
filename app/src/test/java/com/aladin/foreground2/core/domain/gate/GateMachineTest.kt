@@ -30,11 +30,11 @@ private val DEBUG =
         permissionCheckIntervalMillis = 5_000L,
     )
 
-/** Release timings (breath 60 s, window 15 min). */
+/** Release timings (breath 60 s, window 10 min). */
 private val RELEASE =
     Timing(
         breathDurationMillis = 60_000L,
-        allowedWindowMillis = 900_000L,
+        allowedWindowMillis = 600_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
     )

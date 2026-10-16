@@ -40,7 +40,7 @@ Each package has a README.md with a one-line description.
   `FG2`, on in debug, off in release. Log every gate state transition and every overlay show/hide.
 - **Time through `Clock` and `Timing`.** Never call `System.currentTimeMillis()` or read timing constants
   directly; inject `Clock` (use `FakeClock` in tests) and `Timing`.
-  Debug: breath 10 s, window 1 min, poll 500 ms. Release: breath 60 s, window 15 min, poll 500 ms.
+  Debug: breath 10 s, window 1 min, poll 500 ms. Release: breath 60 s, window 10 min, poll 500 ms.
   Both: permission recheck 5 s (the service posts an alert while Usage access / overlay is revoked).
 - Unit tests: JUnit 5 + kotlinx-coroutines-test + Turbine, under `app/src/test/`.
 

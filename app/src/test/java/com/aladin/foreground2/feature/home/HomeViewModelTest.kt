@@ -151,6 +151,19 @@ class HomeViewModelTest {
         }
 
     @Test
+    fun `watched apps are listed by label and marked locked only while their lock runs`() =
+        runTest {
+            watched.watched.value = listOf(YOUTUBE, INSTAGRAM)
+            locks.locks.value = mapOf(YOUTUBE.packageName to NOW + HOUR, INSTAGRAM.packageName to NOW - 1)
+            viewModel().uiState.test {
+                assertEquals(
+                    listOf(WatchedApp(INSTAGRAM, locked = false), WatchedApp(YOUTUBE, locked = true)),
+                    awaitState { it.watched.isNotEmpty() }.watched,
+                )
+            }
+        }
+
+    @Test
     fun `status follows the service and permission revocations seen on resume`() =
         runTest {
             val viewModel = viewModel()

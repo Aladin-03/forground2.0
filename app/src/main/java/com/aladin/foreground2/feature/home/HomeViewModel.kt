@@ -37,26 +37,38 @@ class HomeViewModel
     ) : ViewModel() {
         private val missing = MutableStateFlow(currentMissing())
 
+        /** The last locked list written to the log, so each change is logged once. */
+        private var loggedLocks: List<LockedApp>? = null
+
         /**
-         * Labels come from the watched list, falling back to the package manager for an app unwatched while locked.
-         * Ended locks are dropped here; the service deletes their rows on its next tick.
+         * Both lists, from the locks and watched tables (Room flows, so a new lock shows up without a refresh).
+         * Lock labels come from the watched list, falling back to the package manager for an app unwatched while
+         * locked. Ended locks are dropped here; the service deletes their rows on its next tick.
          */
         @OptIn(ExperimentalCoroutinesApi::class)
-        private val locks: Flow<List<LockedApp>> =
+        private val lists: Flow<Pair<List<LockedApp>, List<WatchedApp>>> =
             combine(lockRepository.observeLocks(), watchedAppsRepository.observeWatched()) { locks, watched ->
-                locks to watched.associate { it.packageName to it.label }
-            }.mapLatest { (locks, labels) ->
+                locks to watched
+            }.mapLatest { (locks, watched) ->
                 val now = clock.nowMillis()
-                locks
-                    .filterValues { it > now }
-                    .map { (pkg, until) ->
-                        LockedApp(AppInfo(pkg, labels[pkg] ?: launcherAppSource.label(pkg) ?: pkg), until)
-                    }.sortedBy { it.unlockAtMillis }
+                val labels = watched.associate { it.packageName to it.label }
+                val running = locks.filterValues { it > now }
+                val lockedApps =
+                    running
+                        .map { (pkg, until) ->
+                            LockedApp(AppInfo(pkg, labels[pkg] ?: launcherAppSource.label(pkg) ?: pkg), until)
+                        }.sortedBy { it.unlockAtMillis }
+                val watchedApps =
+                    watched
+                        .sortedBy { it.label.lowercase() }
+                        .map { WatchedApp(it, locked = it.packageName in running) }
+                logIfChanged(lockedApps, now)
+                lockedApps to watchedApps
             }
 
         val uiState: StateFlow<HomeUiState> =
-            combine(locks, missing, detectionServiceController.running) { locks, missing, running ->
-                HomeUiState(locks = locks, missing = missing, serviceRunning = running)
+            combine(lists, missing, detectionServiceController.running) { (locks, watched), missing, running ->
+                HomeUiState(locks = locks, watched = watched, missing = missing, serviceRunning = running)
             }.stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -78,9 +90,25 @@ class HomeViewModel
 
         suspend fun loadIcon(packageName: String): ImageBitmap? = launcherAppSource.icon(packageName)
 
+        private fun logIfChanged(
+            locks: List<LockedApp>,
+            now: Long,
+        ) {
+            if (locks == loggedLocks) return
+            loggedLocks = locks
+            Log.i(Log.Area.UI) {
+                "home: locked=" +
+                    locks.map {
+                        "${it.app.label} (${it.app.packageName}) unlockAt=${it.unlockAtMillis} " +
+                            "in ${(it.unlockAtMillis - now) / MINUTE_MILLIS}m"
+                    }
+            }
+        }
+
         private fun currentMissing(): List<Permission> = Permission.entries.filterNot(permissionChecker::isGranted)
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
+            const val MINUTE_MILLIS = 60_000L
         }
     }

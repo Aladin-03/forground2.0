@@ -44,6 +44,10 @@ import com.aladin.foreground2.feature.home.HomeFix
 import com.aladin.foreground2.feature.home.HomeUiState
 import com.aladin.foreground2.feature.home.HomeViewModel
 import com.aladin.foreground2.feature.home.LockedApp
+import com.aladin.foreground2.feature.home.WatchedApp
+
+// Lazy-list keys are per section, since an app can be in both lists.
+private enum class Section { Locked, Watched }
 
 @Composable
 fun HomeScreen(
@@ -97,28 +101,42 @@ private fun HomeContent(
                 Text(stringResource(R.string.home_open_picker))
             }
         }
-        item {
-            Text(
-                text = stringResource(R.string.home_locks_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = spacing.sm),
-            )
-        }
+        item { SectionTitle(stringResource(R.string.home_locks_title)) }
         if (state.locks.isEmpty()) {
-            item {
-                Text(
-                    text = stringResource(R.string.home_locks_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            item { EmptyText(stringResource(R.string.home_locks_empty)) }
         } else {
-            items(state.locks, key = { it.app.packageName }) { lock ->
+            items(state.locks, key = { Section.Locked to it.app.packageName }) { lock ->
                 LockRow(lock = lock, clock = clock, loadIcon = loadIcon, modifier = Modifier.animateItem())
             }
         }
+        item { SectionTitle(stringResource(R.string.home_watched_title)) }
+        if (state.watched.isEmpty()) {
+            item { EmptyText(stringResource(R.string.home_watched_empty)) }
+        } else {
+            items(state.watched, key = { Section.Watched to it.app.packageName }) { watched ->
+                WatchedRow(watched = watched, loadIcon = loadIcon, modifier = Modifier.animateItem())
+            }
+        }
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(top = ForegroundTheme.spacing.sm),
+    )
+}
+
+@Composable
+private fun EmptyText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /** Whether detection can work right now, with one button for the most urgent fix. */
@@ -205,6 +223,36 @@ private fun LockRow(
     }
 }
 
+/** A watched app, marked locked or breath-on-open. */
+@Composable
+private fun WatchedRow(
+    watched: WatchedApp,
+    loadIcon: suspend (String) -> ImageBitmap?,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ForegroundTheme.spacing.md),
+    ) {
+        AppIcon(packageName = watched.app.packageName, loadIcon = loadIcon)
+        Text(
+            text = watched.app.label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = stringResource(if (watched.locked) R.string.home_watched_locked else R.string.home_watched_breath),
+            style = MaterialTheme.typography.bodyMedium,
+            color =
+                if (watched.locked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun HomeContentPreview() {
@@ -216,6 +264,12 @@ private fun HomeContentPreview() {
                         listOf(
                             LockedApp(AppInfo("com.instagram.android", "Instagram"), unlockAtMillis = 2_700_000L),
                             LockedApp(AppInfo("com.google.android.youtube", "YouTube"), unlockAtMillis = 190_000_000L),
+                        ),
+                    watched =
+                        listOf(
+                            WatchedApp(AppInfo("com.instagram.android", "Instagram"), locked = true),
+                            WatchedApp(AppInfo("com.whatsapp", "WhatsApp"), locked = false),
+                            WatchedApp(AppInfo("com.google.android.youtube", "YouTube"), locked = true),
                         ),
                     missing = listOf(Permission.Overlay),
                     serviceRunning = true,

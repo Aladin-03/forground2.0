@@ -9,6 +9,12 @@ data class LockedApp(
     val unlockAtMillis: Long,
 )
 
+/** A watched app, as listed on the home screen: locked, or gets a breath on its next entry. */
+data class WatchedApp(
+    val app: AppInfo,
+    val locked: Boolean,
+)
+
 /** What the status row's button does. */
 sealed interface HomeFix {
     /** Open the Settings screen that grants [permission]. */
@@ -23,6 +29,8 @@ sealed interface HomeFix {
 data class HomeUiState(
     /** Running locks, soonest to unlock first. */
     val locks: List<LockedApp> = emptyList(),
+    /** Every watched app, by label. */
+    val watched: List<WatchedApp> = emptyList(),
     /** Every permission not granted right now, required or recommended. */
     val missing: List<Permission> = emptyList(),
     val serviceRunning: Boolean = false,

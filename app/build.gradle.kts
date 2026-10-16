@@ -42,7 +42,7 @@ android {
             // Updates must keep using the same key, or Android refuses them (uninstall first, which wipes locks).
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("long", "BREATH_DURATION_MS", "60_000L")
-            buildConfigField("long", "ALLOWED_WINDOW_MS", "900_000L")
+            buildConfigField("long", "ALLOWED_WINDOW_MS", "600_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
             buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
             buildConfigField("boolean", "LOGGING_ENABLED", "false")

@@ -1,6 +1,6 @@
 # Foreground 2.0 — Spec
 
-Personal Android app (sideloaded, single user). Every time the user enters a **watched app**, they get a 1-minute breathing pause, then choose: use it for up to 15 minutes, or lock it for a chosen duration.
+Personal Android app (sideloaded, single user). Every time the user enters a **watched app**, they get a 1-minute breathing pause, then choose: use it for up to 10 minutes, or lock it for a chosen duration.
 
 **Hard constraint: NO AccessibilityService, ever.** Indian banking apps (Axis, Canara) refuse to run when an untrusted accessibility service is enabled. Detection uses Usage Access; blocking uses an overlay window.
 
@@ -10,7 +10,7 @@ Personal Android app (sideloaded, single user). Every time the user enters a **w
 2. **Entry = breath.** A watched app becoming the front app after any other app (including switching back from WhatsApp) is an *entry*. Each entry shows a full-screen breathing overlay for 60 s. No buttons are interactive until it finishes. Back key does nothing.
 3. **Escaping doesn't skip.** If the user presses Home mid-breath, the overlay is removed. The next entry starts a fresh full minute.
 4. **Prompt.** After the breath: "Block this app?" with Yes / No.
-5. **No = allowed window.** The overlay goes away and the app is usable until `now + 15 min`. If the app is still in front when the window ends, the breath overlay appears on the spot, then the prompt again. Leaving the app ends the sitting; the next entry gets a breath (rule 2).
+5. **No = allowed window.** The overlay goes away and the app is usable until `now + 10 min`. If the app is still in front when the window ends, the breath overlay appears on the spot, then the prompt again. Leaving the app ends the sitting; the next entry gets a breath (rule 2).
 6. **Yes = duration picker.** Scroll wheels for days (0–30), hours (0–23), minutes (0–59), plus Start. Start is disabled at zero. Once started, a lock cannot be cancelled or shortened.
 7. **Locked.** Entering a locked app skips the breath and shows "Unlocks in Xd Yh Zm" (live countdown) with a single **Go home** button.
 8. **Independent locks.** Each app has its own lock. When it expires, the app goes back to rule 2.
