@@ -53,7 +53,7 @@ Each package has a README.md with a one-line description.
 ./gradlew assembleDebug                # build
 ./gradlew detekt ktlintCheck           # static analysis (ktlintFormat auto-fixes style)
 ./gradlew testDebugUnitTest            # unit tests (:detekt-rules:test for the lint rules)
-./gradlew assembleRelease              # R8-minified release APK, signed with the local debug key
+./gradlew assembleRelease              # R8-minified release APK (foreground2-<version>.apk), signed from keystore.properties
 ./gradlew installDebug                 # install on the connected device (Infinix X6871)
 adb logcat -s FG2                      # app logs
 ```

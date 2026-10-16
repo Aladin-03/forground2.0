@@ -1,5 +1,7 @@
+import com.android.build.api.variant.impl.VariantOutputImpl
 import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -13,6 +15,27 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+// Release signing values live in keystore.properties at the repo root (git-ignored; see keystore.properties.example).
+// Read at configuration time but only enforced by release tasks, so debug builds and tests work without it.
+val keystorePropertiesFile: File = rootProject.file("keystore.properties")
+val keystoreProperties =
+    Properties().apply {
+        if (keystorePropertiesFile.isFile) keystorePropertiesFile.inputStream().use(::load)
+    }
+val keystoreKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val keystoreProblem: String? =
+    when {
+        !keystorePropertiesFile.isFile ->
+            "Release signing: ${keystorePropertiesFile.path} is missing. " +
+                "Copy keystore.properties.example to keystore.properties and fill in ${keystoreKeys.joinToString()}."
+        keystoreKeys.any { keystoreProperties.getProperty(it).isNullOrBlank() } ->
+            "Release signing: keystore.properties has no value for " +
+                keystoreKeys.filter { keystoreProperties.getProperty(it).isNullOrBlank() }.joinToString() + "."
+        !rootProject.file(keystoreProperties.getProperty("storeFile")).isFile ->
+            "Release signing: storeFile ${rootProject.file(keystoreProperties.getProperty("storeFile")).path} not found."
+        else -> null
+    }
+
 android {
     namespace = "com.aladin.foreground2"
     compileSdk = 35
@@ -22,7 +45,18 @@ android {
         minSdk = 29
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystoreProblem == null) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -40,9 +74,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Sideloaded single-user app: signed with the local debug key so the release APK installs with adb.
-            // Updates must keep using the same key, or Android refuses them (uninstall first, which wipes locks).
-            signingConfig = signingConfigs.getByName("debug")
+            // Signed with the key from keystore.properties. Updates must keep using the same key, or Android refuses
+            // them (uninstall first, which wipes locks).
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField("long", "BREATH_DURATION_MS", "60_000L")
             buildConfigField("long", "ALLOWED_WINDOW_MS", "600_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
@@ -67,6 +101,20 @@ android {
         unitTests.isReturnDefaultValues = true
         unitTests.all { it.useJUnitPlatform() }
     }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            (output as? VariantOutputImpl)?.outputFileName?.set(output.versionName.map { "foreground2-$it.apk" })
+        }
+    }
+}
+
+// Fail release builds up front with a readable message instead of AGP's signing error.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    val problem = keystoreProblem
+    doFirst { if (problem != null) throw GradleException(problem) }
 }
 
 kotlin {
