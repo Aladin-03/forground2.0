@@ -65,9 +65,10 @@ data class GateUpdate(
 
 /**
  * Holds every watched app's gate state in memory and turns front-app changes into Entered/Left, poll ticks into
- * Tick for the watched app in front, and overlay events into the matching gate events. Locks are the exception to
- * "in memory": [loadLocks] reads the active ones from [LockRepository] when the service starts, and a PersistLock
- * effect is written back before [handle] returns. Not thread-safe: call [loadLocks] and [handle] from one coroutine.
+ * Tick for the watched app in front (and for any app whose lock has ended), and overlay events into the matching gate
+ * events. Locks are the exception to "in memory": [loadLocks] reads the active ones from [LockRepository] when the
+ * service starts, and PersistLock / DeleteLock effects are written back before [handle] returns.
+ * Not thread-safe: call [loadLocks] and [handle] from one coroutine.
  */
 @Singleton
 class GateCoordinator
@@ -88,8 +89,12 @@ class GateCoordinator
         fun stateOf(packageName: String): GateState =
             states[packageName] ?: lockedUntil[packageName]?.let(GateState::Locked) ?: GateState.Idle
 
-        /** Loads the active locks so a restarted service keeps enforcing them (rule 9). Call before [handle]. */
+        /**
+         * Loads the active locks so a restarted service keeps enforcing them (rule 9), deleting any that ended while
+         * it wasn't running. Call before [handle].
+         */
         suspend fun loadLocks() {
+            locks.deleteEnded()
             val active = locks.activeLocks()
             lockedUntil.putAll(active)
             Log.i(Log.Area.Gate) { "loaded ${active.size} active lock(s): $active" }
@@ -99,10 +104,7 @@ class GateCoordinator
             when (input) {
                 is GateInput.WatchedChanged -> onWatchedChanged(input.apps)
                 is GateInput.FrontChanged -> onFrontChanged(input.change)
-                is GateInput.Tick ->
-                    listOfNotNull(
-                        front?.takeIf { it in watched }?.let { send(it, GateEvent.Tick(input.at)) },
-                    )
+                is GateInput.Tick -> onTick(input.at)
                 is GateInput.BreathFinished -> sendIfWatched(input.packageName, GateEvent.BreathFinished(input.at))
                 is GateInput.AnsweredNo -> sendIfWatched(input.packageName, GateEvent.AnsweredNo(input.at))
                 is GateInput.AnsweredYes -> sendIfWatched(input.packageName, GateEvent.AnsweredYes)
@@ -122,6 +124,23 @@ class GateCoordinator
                 previous?.takeIf { it in watched }?.let { send(it, GateEvent.Left(change.at)) },
                 change.packageName.takeIf { it in watched }?.let { send(it, GateEvent.Entered(change.at)) },
             )
+        }
+
+        /**
+         * Ticks the watched app in front, and every app whose lock has ended so its row is deleted promptly (rule 8)
+         * even if it isn't in front. Ended locks of unwatched apps have no gate; they are just deleted.
+         */
+        private suspend fun onTick(at: Long): List<GateUpdate> {
+            val ended = lockedUntil.filterValues { it <= at }.keys
+            val endedUnwatched = ended - watched.keys
+            if (endedUnwatched.isNotEmpty()) {
+                lockedUntil.keys -= endedUnwatched
+                locks.deleteEnded()
+            }
+            return (listOfNotNull(front) + ended)
+                .distinct()
+                .filter { it in watched }
+                .mapNotNull { send(it, GateEvent.Tick(at)) }
         }
 
         /** Unwatching an app mid-gate acts like leaving it (hides any overlay), then forgets it. */
@@ -153,6 +172,10 @@ class GateCoordinator
                 ) {
                     transition = GateMachine.reduce(from, GateEvent.LockStarted(stored), timing)
                 }
+            }
+            if (GateEffect.DeleteLock in transition.effects) {
+                lockedUntil.remove(packageName)
+                locks.deleteEnded()
             }
             states[packageName] = transition.state
             val label = watched[packageName]?.label ?: packageName

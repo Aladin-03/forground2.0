@@ -7,9 +7,13 @@ import androidx.room.Upsert
 
 @Dao
 interface LockDao {
-    /** Locks still running at [nowMillis]. Expired rows stay in the table but are never returned. */
+    /** Locks still running at [nowMillis]. */
     @Query("SELECT * FROM locks WHERE unlockAtMillis > :nowMillis")
     suspend fun activeAt(nowMillis: Long): List<LockEntity>
+
+    /** Deletes every lock that has ended by [nowMillis]; returns how many. */
+    @Query("DELETE FROM locks WHERE unlockAtMillis <= :nowMillis")
+    suspend fun deleteEndedAt(nowMillis: Long): Int
 
     @Query("SELECT * FROM locks WHERE packageName = :packageName")
     suspend fun get(packageName: String): LockEntity?

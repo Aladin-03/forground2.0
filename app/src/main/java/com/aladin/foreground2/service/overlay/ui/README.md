@@ -1,1 +1,1 @@
-Overlay screens (breath, prompt, duration picker, locked placeholder until the lock screen lands). Stateless apart from their own animation, countdown, wheel selection and icon loading; events go out through callbacks.
+Overlay screens (breath, prompt, duration picker, lock screen). Stateless apart from their own animation, countdown, wheel selection and icon loading; events go out through callbacks.

@@ -21,7 +21,10 @@ sealed interface GateState {
         val until: Long,
     ) : GateState
 
-    /** App is locked until [until]. Once `now >= until` the lock has expired and the state acts like [Idle]. */
+    /**
+     * App is locked until [until]. Once `now >= until` the lock has expired: the next event moves to [Idle] (or
+     * straight into a breath, for an entry) with [GateEffect.DeleteLock].
+     */
     data class Locked(
         val until: Long,
     ) : GateState
@@ -29,7 +32,8 @@ sealed interface GateState {
 
 /**
  * Inputs to the gate. The service sends [Entered]/[Left] when the app becomes / stops being the front app, and
- * [Tick] on each poll only while the app is in front. The overlay sends [BreathFinished] and the answers.
+ * [Tick] on each poll while the app is in front, and to any app whose lock has ended. The overlay sends
+ * [BreathFinished] and the answers.
  */
 sealed interface GateEvent {
     data class Entered(
@@ -76,6 +80,9 @@ sealed interface GateEffect {
     data class PersistLock(
         val until: Long,
     ) : GateEffect
+
+    /** The lock has ended: delete its stored row. */
+    data object DeleteLock : GateEffect
 }
 
 /** Result of [GateMachine.reduce]. Same state and no effects means the event was ignored. */

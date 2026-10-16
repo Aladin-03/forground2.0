@@ -4,6 +4,7 @@ import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.repo.LockRepository
 import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.FakeClock
+import com.aladin.foreground2.core.domain.gate.GateEffect.DeleteLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.HideOverlay
 import com.aladin.foreground2.core.domain.gate.GateEffect.PersistLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.ShowBreath
@@ -42,6 +43,10 @@ private class FakeLockRepository(
         packageName: String,
         unlockAtMillis: Long,
     ): Long = maxOf(unlockAtMillis, stored[packageName] ?: Long.MIN_VALUE).also { stored[packageName] = it }
+
+    override suspend fun deleteEnded() {
+        stored.values.removeAll { it <= clock.now }
+    }
 }
 
 class GateCoordinatorTest {
@@ -327,19 +332,55 @@ class GateCoordinatorTest {
                 updates,
             )
             assertEquals(Idle, restarted.stateOf(INSTAGRAM))
+            assertEquals(mapOf(YOUTUBE to until), locks.stored)
         }
 
     @Test
-    fun `a lock ending while its app is in front breathes`() =
+    fun `a lock ending under its lock screen is deleted without a breath, and the next entry breathes`() =
         runTest {
             picker(YOUTUBE)
             val until = clock.now + HOUR
             coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
+            clock.advanceBy(HOUR - 1)
+            assertTrue(tick().isEmpty())
+            clock.advanceBy(1)
+            assertEquals(listOf(GateUpdate(YOUTUBE, Locked(until), Idle, listOf(DeleteLock), "YouTube")), tick())
+            assertTrue(locks.stored.isEmpty())
+            clock.advanceBy(TIMING.pollIntervalMillis)
+            assertTrue(tick().isEmpty())
+            assertEquals(listOf(GateUpdate(YOUTUBE, Idle, Idle, listOf(HideOverlay), "YouTube")), front(LAUNCHER))
+            assertEquals(listOf(ShowBreath), front(YOUTUBE).single().effects)
+        }
+
+    @Test
+    fun `a lock ending while its app is elsewhere is deleted on the next tick`() =
+        runTest {
+            picker(YOUTUBE)
+            val until = clock.now + HOUR
+            coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
+            front(INSTAGRAM)
             clock.advanceBy(HOUR)
-            assertEquals(
-                listOf(GateUpdate(YOUTUBE, Locked(until), Breathing(until), listOf(ShowBreath), "YouTube")),
-                tick(),
+            val updates = tick()
+            assertEquals(GateUpdate(YOUTUBE, Locked(until), Idle, listOf(DeleteLock), "YouTube"), updates.first())
+            assertTrue(locks.stored.isEmpty())
+            assertEquals(Idle, coordinator.stateOf(YOUTUBE))
+        }
+
+    @Test
+    fun `an unwatched app's ended lock is deleted on the next tick and forgotten`() =
+        runTest {
+            picker(YOUTUBE)
+            val until = clock.now + HOUR
+            coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
+            front(LAUNCHER)
+            coordinator.handle(GateInput.WatchedChanged(listOf(AppInfo(INSTAGRAM, "Instagram"))))
+            clock.advanceBy(HOUR)
+            assertTrue(tick().isEmpty())
+            assertTrue(locks.stored.isEmpty())
+            coordinator.handle(
+                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
             )
+            assertEquals(Idle, coordinator.stateOf(YOUTUBE))
         }
 
     @Test

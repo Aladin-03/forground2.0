@@ -13,6 +13,8 @@ data class Sizing(
     val breathCircle: Dp = 240.dp,
     /** App icon on the "Block this app?" prompt. */
     val promptIcon: Dp = 72.dp,
+    /** App icon on the lock screen. */
+    val lockIcon: Dp = 72.dp,
     /** One row of a number wheel on the duration picker. */
     val wheelItemHeight: Dp = 48.dp,
     /** Width of one number wheel on the duration picker. */

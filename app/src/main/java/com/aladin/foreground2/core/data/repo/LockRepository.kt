@@ -20,6 +20,9 @@ interface LockRepository {
         packageName: String,
         unlockAtMillis: Long,
     ): Long
+
+    /** Deletes every lock that has ended (rule 8). Running locks are never touched. */
+    suspend fun deleteEnded()
 }
 
 @Singleton
@@ -42,5 +45,10 @@ class RoomLockRepository
                     if (stored != unlockAtMillis) " (kept later existing $stored)" else ""
             }
             return stored
+        }
+
+        override suspend fun deleteEnded() {
+            val deleted = dao.deleteEndedAt(clock.nowMillis())
+            if (deleted > 0) Log.i(Log.Area.DB) { "deleted $deleted ended lock(s)" }
         }
     }

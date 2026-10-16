@@ -53,9 +53,20 @@
   <string name="duration_start">Start</string>
 
   <!-- %1$s is the app's label. -->
-  <string name="locked_placeholder_title">%1$s is locked</string>
+  <string name="lock_title">%1$s is locked</string>
+  <!-- %1$s is the time left, one of the lock_remaining_* strings. -->
+  <string name="lock_unlocks_in">Unlocks in %1$s</string>
+  <!-- Days, hours, minutes left, e.g. 2d 3h 4m. -->
+  <string name="lock_remaining_days">%1$dd %2$dh %3$dm</string>
+  <!-- Hours, minutes left, e.g. 3h 4m. -->
+  <string name="lock_remaining_hours">%1$dh %2$dm</string>
+  <!-- Minutes, seconds left, e.g. 4m 05s. -->
+  <string name="lock_remaining_minutes">%1$dm %2$02ds</string>
   <!-- %1$s is a date and time, e.g. Fri 17 Oct, 14:30. -->
-  <string name="locked_placeholder_until">Unlocks at %1$s</string>
+  <string name="lock_unlocks_at">Unlocks at %1$s</string>
+  <string name="lock_ended">Unlocked</string>
+  <string name="lock_ended_hint">Go home, then open it again.</string>
+  <string name="lock_go_home">Go home</string>
 
   <string name="detection_channel_name">Watching apps</string>
   <string name="detection_notification_title">Foreground is on</string>

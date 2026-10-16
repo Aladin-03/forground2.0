@@ -2,6 +2,7 @@ package com.aladin.foreground2.core.domain.gate
 
 import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.domain.FakeClock
+import com.aladin.foreground2.core.domain.gate.GateEffect.DeleteLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.HideOverlay
 import com.aladin.foreground2.core.domain.gate.GateEffect.PersistLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.ShowBreath
@@ -198,9 +199,10 @@ class GateMachineTest {
         }
 
         @Test
-        fun `leaving while idle does nothing`() {
+        fun `leaving while idle stays idle and only hides a leftover overlay`() {
+            // Idle in front only happens under a lock screen whose lock ended (rule 8); the host ignores it otherwise.
             val gate = GateDriver()
-            assertEquals(emptyList<GateEffect>(), gate.leave())
+            assertEquals(listOf(HideOverlay), gate.leave())
             assertEquals(Idle, gate.state)
         }
     }
@@ -416,11 +418,11 @@ class GateMachineTest {
     @Nested
     inner class `Rule 8 - lock expiry` {
         @Test
-        fun `entering after the lock expired gives a breath`() {
+        fun `entering after the lock expired deletes it and gives a breath`() {
             val until = START + MINUTE
             val gate = GateDriver(initial = Locked(until))
             gate.advance(MINUTE)
-            assertEquals(listOf(ShowBreath), gate.enter())
+            assertEquals(listOf(DeleteLock, ShowBreath), gate.enter())
             assertEquals(Breathing(until), gate.state)
         }
 
@@ -433,23 +435,44 @@ class GateMachineTest {
         }
 
         @Test
-        fun `leaving an expired lock goes idle`() {
+        fun `leaving an expired lock deletes it, hides the lock screen and goes idle`() {
             val gate = GateDriver(initial = Locked(START + MINUTE))
+            gate.enter()
             gate.advance(MINUTE)
-            gate.leave()
+            assertEquals(listOf(DeleteLock, HideOverlay), gate.leave())
             assertEquals(Idle, gate.state)
         }
 
         @Test
-        fun `lock expiring while its lock screen is in front breathes on the spot`() {
+        fun `a lock ending under its lock screen deletes it and goes idle without a breath`() {
             val until = START + MINUTE
             val gate = GateDriver(initial = Locked(until))
             gate.enter()
             gate.advance(MINUTE)
-            assertEquals(listOf(ShowBreath), gate.tick())
-            assertEquals(Breathing(until), gate.state)
-            gate.advance(DEBUG.breathDurationMillis)
-            assertEquals(listOf(ShowPrompt), gate.breathFinished())
+            assertEquals(listOf(DeleteLock), gate.tick())
+            assertEquals(Idle, gate.state)
+            assertEquals(emptyList<GateEffect>(), gate.tickFor(10 * MINUTE))
+            assertEquals(Idle, gate.state)
+        }
+
+        @Test
+        fun `after a lock ends under its lock screen, leaving hides it and the next entry breathes`() {
+            val until = START + MINUTE
+            val gate = GateDriver(initial = Locked(until))
+            gate.enter()
+            gate.advance(MINUTE)
+            gate.tick()
+            assertEquals(listOf(HideOverlay), gate.leave())
+            assertEquals(listOf(ShowBreath), gate.enter())
+            assertEquals(Breathing(gate.now()), gate.state)
+        }
+
+        @Test
+        fun `a lock ending while its app is elsewhere is deleted on the next tick`() {
+            val gate = GateDriver(initial = Locked(START + MINUTE))
+            gate.advance(MINUTE)
+            assertEquals(listOf(DeleteLock), gate.tick())
+            assertEquals(Idle, gate.state)
         }
 
         @Test
@@ -463,7 +486,7 @@ class GateMachineTest {
             assertEquals(listOf(ShowLockScreen(START + DEBUG.breathDurationMillis + 5 * MINUTE)), gate.enter())
             gate.leave()
             gate.advance(4 * MINUTE)
-            assertEquals(listOf(ShowBreath), gate.enter())
+            assertEquals(listOf(DeleteLock, ShowBreath), gate.enter())
         }
     }
 

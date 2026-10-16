@@ -10,7 +10,7 @@ import com.aladin.foreground2.service.detection.GateInput
 import com.aladin.foreground2.service.detection.GateUpdate
 import com.aladin.foreground2.service.overlay.ui.BreathScreen
 import com.aladin.foreground2.service.overlay.ui.DurationPickerScreen
-import com.aladin.foreground2.service.overlay.ui.LockedPlaceholderScreen
+import com.aladin.foreground2.service.overlay.ui.LockScreen
 import com.aladin.foreground2.service.overlay.ui.PromptScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -33,6 +33,7 @@ class OverlayEffects
         private val clock: Clock,
         private val timing: Timing,
         private val launcherApps: LauncherAppSource,
+        private val home: HomeLauncher,
     ) {
         private val events = Channel<GateInput>(Channel.UNLIMITED)
         private var shownFor: String? = null
@@ -64,9 +65,9 @@ class OverlayEffects
                 GateEffect.HideOverlay -> hide(pkg)
                 GateEffect.ShowPrompt -> showPrompt(pkg, update.label)
                 GateEffect.ShowDurationPicker -> showDurationPicker(pkg, update.label)
-                is GateEffect.ShowLockScreen -> showLockedPlaceholder(pkg, update.label, effect.until)
+                is GateEffect.ShowLockScreen -> showLockScreen(pkg, update.label, effect.until)
                 // Written by the coordinator before the update reaches here.
-                is GateEffect.PersistLock -> Unit
+                is GateEffect.PersistLock, GateEffect.DeleteLock -> Unit
             }
         }
 
@@ -122,16 +123,29 @@ class OverlayEffects
             }
         }
 
-        /** Placeholder until the rule 7 lock screen exists. */
-        private fun showLockedPlaceholder(
+        /** Rule 7. Go home is the only way out: it fires the HOME intent and hides the lock screen. */
+        private fun showLockScreen(
             pkg: String,
             label: String,
             until: Long,
         ) {
             shownFor = pkg
-            host.show("locked placeholder $pkg until=$until") {
-                LockedPlaceholderScreen(label = label, until = until)
+            host.show("lock screen $pkg until=$until") {
+                LockScreen(
+                    label = label,
+                    until = until,
+                    clock = clock,
+                    loadIcon = { launcherApps.icon(pkg) },
+                    onGoHome = { goHome(pkg) },
+                )
             }
+        }
+
+        /** Main thread (a button tap). The Left that follows finds the overlay already gone. */
+        internal fun goHome(pkg: String) {
+            Log.i(Log.Area.Overlay) { "go home from lock screen $pkg" }
+            home.goHome()
+            hide(pkg)
         }
 
         private fun hide(pkg: String) {

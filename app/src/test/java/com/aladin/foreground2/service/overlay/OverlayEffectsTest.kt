@@ -47,7 +47,7 @@ class OverlayEffectsTest {
     }
 
     private val host = FakeHost()
-    private val effects = OverlayEffects(host, FakeClock(START), TIMING, NoIcons)
+    private val effects = OverlayEffects(host, FakeClock(START), TIMING, NoIcons) { host.calls += "home" }
 
     private fun breath(pkg: String) =
         GateUpdate(pkg, GateState.Idle, GateState.Breathing(START), listOf(GateEffect.ShowBreath), pkg)
@@ -93,9 +93,28 @@ class OverlayEffectsTest {
             effects.apply(update(YOUTUBE, GateEffect.ShowDurationPicker))
             effects.apply(update(YOUTUBE, GateEffect.PersistLock(until), GateEffect.ShowLockScreen(until)))
             assertEquals(
-                listOf("show duration picker $YOUTUBE", "show locked placeholder $YOUTUBE until=$until"),
+                listOf("show duration picker $YOUTUBE", "show lock screen $YOUTUBE until=$until"),
                 host.calls,
             )
+        }
+
+    @Test
+    fun `Go home fires HOME, hides the lock screen, and the Left's HideOverlay after it does nothing`() =
+        runTest {
+            val until = START + 60_000L
+            effects.apply(update(YOUTUBE, GateEffect.ShowLockScreen(until)))
+            effects.goHome(YOUTUBE)
+            effects.apply(update(YOUTUBE, GateEffect.HideOverlay))
+            assertEquals(listOf("show lock screen $YOUTUBE until=$until", "home", "hide"), host.calls)
+        }
+
+    @Test
+    fun `DeleteLock shows nothing and keeps the lock screen up`() =
+        runTest {
+            val until = START + 60_000L
+            effects.apply(update(YOUTUBE, GateEffect.ShowLockScreen(until)))
+            effects.apply(update(YOUTUBE, GateEffect.DeleteLock))
+            assertEquals(listOf("show lock screen $YOUTUBE until=$until"), host.calls)
         }
 
     @Test

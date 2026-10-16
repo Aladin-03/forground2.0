@@ -1,6 +1,7 @@
 package com.aladin.foreground2.core.domain.gate
 
 import com.aladin.foreground2.core.config.Timing
+import com.aladin.foreground2.core.domain.gate.GateEffect.DeleteLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.HideOverlay
 import com.aladin.foreground2.core.domain.gate.GateEffect.PersistLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.ShowBreath
@@ -34,27 +35,37 @@ object GateMachine {
             is GateEvent.Tick -> onTick(state, event.now)
         }
 
-    /** Rule 2 / 7: every entry is a fresh breath, unless an active lock skips straight to the lock screen. */
+    /**
+     * Rule 2 / 7: every entry is a fresh breath, unless an active lock skips straight to the lock screen. Rule 8: an
+     * ended lock is deleted and the entry breathes.
+     */
     private fun onEntered(
         state: GateState,
         now: Long,
     ): Transition =
-        if (state is Locked && state.isActive(now)) {
-            Transition(state, listOf(ShowLockScreen(state.until)))
-        } else {
-            startBreath(now)
+        when {
+            state !is Locked -> startBreath(now)
+            state.isActive(now) -> Transition(state, listOf(ShowLockScreen(state.until)))
+            else -> startBreath(now).let { it.copy(effects = listOf(DeleteLock) + it.effects) }
         }
 
-    /** Rule 3 / 5: leaving ends the sitting. An active lock stays; anything else goes back to Idle. */
+    /**
+     * Rule 3 / 5: leaving ends the sitting. An active lock stays; anything else goes back to Idle. Idle still hides:
+     * Idle in front means a lock ended under its lock screen, which stays up until the user leaves.
+     */
     private fun onLeft(
         state: GateState,
         now: Long,
     ): Transition =
         when (state) {
-            Idle -> Transition(state)
+            Idle, is Breathing, Prompting, PickingDuration -> Transition(Idle, listOf(HideOverlay))
             is Allowed -> Transition(Idle)
-            is Breathing, Prompting, PickingDuration -> Transition(Idle, listOf(HideOverlay))
-            is Locked -> Transition(if (state.isActive(now)) state else Idle, listOf(HideOverlay))
+            is Locked ->
+                if (state.isActive(now)) {
+                    Transition(state, listOf(HideOverlay))
+                } else {
+                    Transition(Idle, listOf(DeleteLock, HideOverlay))
+                }
         }
 
     /** Rule 4: prompt only once the full breath has elapsed. */
@@ -97,8 +108,9 @@ object GateMachine {
         }
 
     /**
-     * Rule 5: an allowed window ending while in front breathes on the spot. Rule 8: a lock expiring while its lock
-     * screen is in front does the same, so the app never becomes usable without a breath.
+     * Rule 5: an allowed window ending while in front breathes on the spot. Rule 8: a lock ending goes Idle and is
+     * deleted, without a breath; if its lock screen is in front it stays up (Go home is the only way out) and the
+     * next entry breathes.
      */
     private fun onTick(
         state: GateState,
@@ -106,7 +118,7 @@ object GateMachine {
     ): Transition =
         when {
             state is Allowed && now >= state.until -> startBreath(now)
-            state is Locked && !state.isActive(now) -> startBreath(now)
+            state is Locked && !state.isActive(now) -> Transition(Idle, listOf(DeleteLock))
             else -> Transition(state)
         }
 

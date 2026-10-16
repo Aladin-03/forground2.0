@@ -31,7 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.Clock
-import com.aladin.foreground2.service.overlay.BreathCountdown
+import com.aladin.foreground2.service.overlay.Countdown
 
 private object Breath {
     /** 5 s in, 5 s out: six breaths a minute. */
@@ -52,7 +52,7 @@ fun BreathScreen(
     onFinished: (now: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val countdown = remember(endsAt, clock) { BreathCountdown(endsAt, clock) }
+    val countdown = remember(endsAt, clock) { Countdown(endsAt, clock) }
     var secondsLeft by remember(countdown) { mutableIntStateOf(countdown.secondsLeftNow()) }
     val currentOnFinished by rememberUpdatedState(onFinished)
     LaunchedEffect(countdown) {

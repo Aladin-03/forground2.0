@@ -19,6 +19,12 @@ class RoomLockRepositoryTest {
 
         override suspend fun activeAt(nowMillis: Long) = rows.values.filter { it.unlockAtMillis > nowMillis }
 
+        override suspend fun deleteEndedAt(nowMillis: Long): Int {
+            val ended = rows.values.filter { it.unlockAtMillis <= nowMillis }
+            ended.forEach { rows.remove(it.packageName) }
+            return ended.size
+        }
+
         override suspend fun get(packageName: String) = rows[packageName]
 
         override suspend fun upsert(lock: LockEntity) {
@@ -58,5 +64,14 @@ class RoomLockRepositoryTest {
             dao.rows[YOUTUBE] = LockEntity(YOUTUBE, NOW + HOUR)
             dao.rows[INSTAGRAM] = LockEntity(INSTAGRAM, NOW)
             assertEquals(mapOf(YOUTUBE to NOW + HOUR), repo.activeLocks())
+        }
+
+    @Test
+    fun `deleting ended locks keeps running ones`() =
+        runTest {
+            dao.rows[YOUTUBE] = LockEntity(YOUTUBE, NOW + 1)
+            dao.rows[INSTAGRAM] = LockEntity(INSTAGRAM, NOW)
+            repo.deleteEnded()
+            assertEquals(mapOf(YOUTUBE to LockEntity(YOUTUBE, NOW + 1)), dao.rows)
         }
 }
