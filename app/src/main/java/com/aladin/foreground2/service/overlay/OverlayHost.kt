@@ -37,12 +37,14 @@ interface OverlayHost {
  * [OverlayHost] backed by a TYPE_APPLICATION_OVERLAY window holding a ComposeView. Each [show] adds a fresh window
  * with its own [OverlayOwner]; the previous window is removed only after the new one is added, so the app below
  * never flashes through. Removing a window destroys its owner, which disposes its composition and ViewModels.
+ * Media is paused through [MediaPauser] from the first overlay shown until [hide], across replacements.
  */
 @Singleton
 class WindowOverlayHost
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val mediaPauser: MediaPauser,
     ) : OverlayHost {
         private class Shown(
             val name: String,
@@ -85,6 +87,7 @@ class WindowOverlayHost
             current = Shown(name, root, owner)
             Log.i(Log.Area.Overlay) { "show $name" + previous?.let { " (replaces ${it.name})" }.orEmpty() }
             previous?.let(::remove)
+            mediaPauser.pause()
         }
 
         override fun hide() {
@@ -92,6 +95,7 @@ class WindowOverlayHost
             current = null
             remove(shown)
             Log.i(Log.Area.Overlay) { "hide ${shown.name}" }
+            mediaPauser.release()
         }
 
         private fun remove(shown: Shown) {

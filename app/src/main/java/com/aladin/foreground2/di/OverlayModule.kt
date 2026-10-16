@@ -1,7 +1,11 @@
 package com.aladin.foreground2.di
 
+import com.aladin.foreground2.service.overlay.AudioManagerMediaControls
 import com.aladin.foreground2.service.overlay.HomeLauncher
 import com.aladin.foreground2.service.overlay.IntentHomeLauncher
+import com.aladin.foreground2.service.overlay.KeyEventMediaPauser
+import com.aladin.foreground2.service.overlay.MediaControls
+import com.aladin.foreground2.service.overlay.MediaPauser
 import com.aladin.foreground2.service.overlay.OverlayHost
 import com.aladin.foreground2.service.overlay.WindowOverlayHost
 import dagger.Binds
@@ -17,4 +21,10 @@ interface OverlayModule {
 
     @Binds
     fun bindHomeLauncher(impl: IntentHomeLauncher): HomeLauncher
+
+    @Binds
+    fun bindMediaPauser(impl: KeyEventMediaPauser): MediaPauser
+
+    @Binds
+    fun bindMediaControls(impl: AudioManagerMediaControls): MediaControls
 }
