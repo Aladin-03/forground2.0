@@ -44,6 +44,18 @@ sealed interface GateInput {
         val packageName: String,
     ) : GateInput
 
+    /** The user tapped "Lock it now" on [packageName]'s breath at [at]. */
+    data class LockNowRequested(
+        val packageName: String,
+        val at: Long,
+    ) : GateInput
+
+    /** The user tapped Back on [packageName]'s picker opened from the breath, at [at]. */
+    data class PickerCancelled(
+        val packageName: String,
+        val at: Long,
+    ) : GateInput
+
     /** The user tapped Start on [packageName]'s duration picker, locking it until [until]. */
     data class LockStarted(
         val packageName: String,
@@ -115,6 +127,8 @@ class GateCoordinator
                 is GateInput.BreathFinished -> sendIfWatched(input.packageName, GateEvent.BreathFinished(input.at))
                 is GateInput.AnsweredNo -> sendIfWatched(input.packageName, GateEvent.AnsweredNo(input.at))
                 is GateInput.AnsweredYes -> sendIfWatched(input.packageName, GateEvent.AnsweredYes)
+                is GateInput.LockNowRequested -> sendIfWatched(input.packageName, GateEvent.LockNowRequested(input.at))
+                is GateInput.PickerCancelled -> sendIfWatched(input.packageName, GateEvent.PickerCancelled(input.at))
                 is GateInput.LockStarted -> sendIfWatched(input.packageName, GateEvent.LockStarted(input.until))
             }
 
@@ -193,5 +207,16 @@ class GateCoordinator
             return GateUpdate(packageName, from, transition.state, transition.effects, label)
         }
 
-        private val GateState.name: String get() = this::class.simpleName.orEmpty()
+        private val GateState.name: String
+            get() =
+                when (this) {
+                    is GateState.Breathing -> "Breathing(startedAt=$startedAt)"
+                    is GateState.PickingDuration ->
+                        if (fromBreath) {
+                            "PickingDuration(fromBreath, breathRemainingMs=$breathRemainingMs)"
+                        } else {
+                            "PickingDuration"
+                        }
+                    else -> this::class.simpleName.orEmpty()
+                }
     }

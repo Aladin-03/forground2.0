@@ -78,6 +78,10 @@ private class GateDriver(
 
     fun answerYes() = send(GateEvent.AnsweredYes)
 
+    fun lockNow() = send(GateEvent.LockNowRequested(now()))
+
+    fun cancelPicker() = send(GateEvent.PickerCancelled(now()))
+
     fun startLock(durationMillis: Long) = send(GateEvent.LockStarted(now() + durationMillis))
 
     /** Enter, sit through the full breath, and land on the prompt. */
@@ -146,7 +150,7 @@ class GateMachineTest {
 
         @Test
         fun `entering from every non-locked state starts a breath`() {
-            listOf(Idle, Breathing(START - 1), Prompting, PickingDuration, Allowed(START + MINUTE)).forEach { from ->
+            listOf(Idle, Breathing(START - 1), Prompting, PickingDuration(), Allowed(START + MINUTE)).forEach { from ->
                 val gate = GateDriver(initial = from)
                 assertEquals(listOf(ShowBreath), gate.enter(), "from $from")
                 assertEquals(Breathing(START), gate.state, "from $from")
@@ -255,7 +259,7 @@ class GateMachineTest {
 
         @Test
         fun `answers outside the prompt are ignored`() {
-            listOf(Idle, Breathing(START), PickingDuration, Allowed(START + MINUTE), Locked(START + DAY)).forEach {
+            listOf(Idle, Breathing(START), PickingDuration(), Allowed(START + MINUTE), Locked(START + DAY)).forEach {
                 val gate = GateDriver(initial = it)
                 assertEquals(emptyList<GateEffect>(), gate.answerNo(), "No from $it")
                 assertEquals(emptyList<GateEffect>(), gate.answerYes(), "Yes from $it")
@@ -346,7 +350,7 @@ class GateMachineTest {
             val gate = GateDriver()
             gate.enterAndBreathe()
             assertEquals(listOf(ShowDurationPicker), gate.answerYes())
-            assertEquals(PickingDuration, gate.state)
+            assertEquals(PickingDuration(), gate.state)
         }
 
         @Test
@@ -379,6 +383,107 @@ class GateMachineTest {
             gate.tick()
             gate.leave()
             assertEquals(Locked(until), gate.state)
+        }
+    }
+
+    @Nested
+    inner class `Lock it now - shortcut from the breath` {
+        @Test
+        fun `lock-now mid-breath opens the picker keeping the breath left`() {
+            val gate = GateDriver()
+            gate.enter()
+            gate.advance(3_000L)
+            assertEquals(listOf(ShowDurationPicker), gate.lockNow())
+            assertEquals(PickingDuration(fromBreath = true, breathRemainingMs = 7_000L), gate.state)
+        }
+
+        @Test
+        fun `lock-now then Start creates the lock`() {
+            val gate = GateDriver()
+            gate.enter()
+            gate.advance(2_000L)
+            gate.lockNow()
+            gate.advance(5_000L)
+            val until = gate.now() + 3 * 60 * MINUTE
+            assertEquals(listOf(PersistLock(until), ShowLockScreen(until)), gate.send(GateEvent.LockStarted(until)))
+            assertEquals(Locked(until), gate.state)
+        }
+
+        @Test
+        fun `lock-now then cancel resumes the breath with the same remaining time`() {
+            val gate = GateDriver()
+            gate.enter()
+            gate.advance(4_000L)
+            gate.lockNow()
+            gate.advance(3_000L) // Picker open: the breath is paused.
+
+            assertEquals(listOf(ShowBreath), gate.cancelPicker())
+            val resumedAt = gate.now()
+            assertEquals(Breathing(startedAt = resumedAt - 4_000L), gate.state)
+
+            // Still the 6 s that were left at lock-now, not 3 s.
+            gate.advance(6_000L - 1)
+            assertEquals(emptyList<GateEffect>(), gate.breathFinished())
+            gate.advance(1)
+            assertEquals(listOf(ShowPrompt), gate.breathFinished())
+        }
+
+        @Test
+        fun `lock-now, wait longer than the breath, then cancel still returns to the breath`() {
+            val gate = GateDriver()
+            gate.enter()
+            gate.advance(1_000L)
+            gate.lockNow()
+            gate.advance(DEBUG.breathDurationMillis * 5)
+
+            // A breath timer that fired meanwhile doesn't count: the gate is in the picker.
+            assertEquals(emptyList<GateEffect>(), gate.breathFinished())
+            assertEquals(emptyList<GateEffect>(), gate.tick())
+
+            assertEquals(listOf(ShowBreath), gate.cancelPicker())
+            assertEquals(Breathing(startedAt = gate.now() - 1_000L), gate.state)
+            assertEquals(emptyList<GateEffect>(), gate.breathFinished())
+        }
+
+        @Test
+        fun `Home during the early picker returns to Idle and the next entry gets a full breath`() {
+            val gate = GateDriver()
+            gate.enter()
+            gate.advance(8_000L)
+            gate.lockNow()
+            assertEquals(listOf(HideOverlay), gate.leave())
+            assertEquals(Idle, gate.state)
+
+            gate.advance(1_000L)
+            assertEquals(listOf(ShowBreath), gate.enter())
+            assertEquals(Breathing(gate.now()), gate.state)
+        }
+
+        @Test
+        fun `lock-now outside the breath is ignored`() {
+            listOf(Idle, Prompting, PickingDuration(), Allowed(START + MINUTE), Locked(START + DAY)).forEach {
+                val gate = GateDriver(initial = it)
+                assertEquals(emptyList<GateEffect>(), gate.lockNow(), "from $it")
+                assertEquals(it, gate.state)
+            }
+        }
+
+        @Test
+        fun `the Yes-path picker cannot be cancelled`() {
+            val gate = GateDriver()
+            gate.enterAndBreathe()
+            gate.answerYes()
+            assertEquals(emptyList<GateEffect>(), gate.cancelPicker())
+            assertEquals(PickingDuration(), gate.state)
+        }
+
+        @Test
+        fun `cancel outside the picker is ignored`() {
+            listOf(Idle, Breathing(START), Prompting, Allowed(START + MINUTE), Locked(START + DAY)).forEach {
+                val gate = GateDriver(initial = it)
+                assertEquals(emptyList<GateEffect>(), gate.cancelPicker(), "from $it")
+                assertEquals(it, gate.state)
+            }
         }
     }
 

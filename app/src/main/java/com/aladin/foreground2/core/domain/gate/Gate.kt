@@ -13,8 +13,15 @@ sealed interface GateState {
     /** "Block this app?" prompt is showing. */
     data object Prompting : GateState
 
-    /** Lock duration picker is showing. */
-    data object PickingDuration : GateState
+    /**
+     * Lock duration picker is showing. [fromBreath]: opened by "Lock it now" mid-breath, with [breathRemainingMs] of
+     * the breath still owed; cancelling resumes the breath with exactly that much left (its countdown is paused while
+     * the picker is open). Opened from the prompt's Yes, it has no cancel.
+     */
+    data class PickingDuration(
+        val fromBreath: Boolean = false,
+        val breathRemainingMs: Long = 0L,
+    ) : GateState
 
     /** App is usable without an overlay until [until]. In memory only. */
     data class Allowed(
@@ -33,7 +40,7 @@ sealed interface GateState {
 /**
  * Inputs to the gate. The service sends [Entered]/[Left] when the app becomes / stops being the front app, and
  * [Tick] on each poll while the app is in front, and to any app whose lock has ended. The overlay sends
- * [BreathFinished] and the answers.
+ * [BreathFinished], [LockNowRequested], the answers and the picker's Start / cancel.
  */
 sealed interface GateEvent {
     data class Entered(
@@ -53,6 +60,16 @@ sealed interface GateEvent {
     ) : GateEvent
 
     data object AnsweredYes : GateEvent
+
+    /** "Lock it now" tapped on the breath screen. */
+    data class LockNowRequested(
+        val now: Long,
+    ) : GateEvent
+
+    /** Back tapped on a picker opened by [LockNowRequested]. */
+    data class PickerCancelled(
+        val now: Long,
+    ) : GateEvent
 
     data class LockStarted(
         val until: Long,

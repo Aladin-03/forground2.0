@@ -64,7 +64,7 @@ class OverlayEffects
                 GateEffect.ShowBreath -> showBreath(pkg, update.to)
                 GateEffect.HideOverlay -> hide(pkg)
                 GateEffect.ShowPrompt -> showPrompt(pkg, update.label)
-                GateEffect.ShowDurationPicker -> showDurationPicker(pkg, update.label)
+                GateEffect.ShowDurationPicker -> showDurationPicker(pkg, update.label, update.to)
                 is GateEffect.ShowLockScreen -> showLockScreen(pkg, update.label, effect.until)
                 // Written by the coordinator before the update reaches here.
                 is GateEffect.PersistLock, GateEffect.DeleteLock -> Unit
@@ -86,6 +86,7 @@ class OverlayEffects
                     endsAt = endsAt,
                     clock = clock,
                     onFinished = { now -> events.trySend(GateInput.BreathFinished(pkg, now)) },
+                    onLockNow = { events.trySend(GateInput.LockNowRequested(pkg, clock.nowMillis())) },
                 )
             }
         }
@@ -106,19 +107,30 @@ class OverlayEffects
             }
         }
 
-        /** Start locks until now + the picked duration; a repeated tap is ignored by the gate (already Locked). */
+        /**
+         * Start locks until now + the picked duration; a repeated tap is ignored by the gate (already Locked). Opened
+         * from the breath, it also has Back, which resumes the breath.
+         */
         private fun showDurationPicker(
             pkg: String,
             label: String,
+            state: GateState,
         ) {
+            val fromBreath = (state as? GateState.PickingDuration)?.fromBreath == true
             shownFor = pkg
-            host.show("duration picker $pkg") {
+            host.show("duration picker $pkg" + if (fromBreath) " (from breath)" else "") {
                 DurationPickerScreen(
                     label = label,
                     clock = clock,
                     onStart = { duration ->
                         events.trySend(GateInput.LockStarted(pkg, clock.nowMillis() + duration.millis))
                     },
+                    onBack =
+                        if (fromBreath) {
+                            { events.trySend(GateInput.PickerCancelled(pkg, clock.nowMillis())) }
+                        } else {
+                            null
+                        },
                 )
             }
         }

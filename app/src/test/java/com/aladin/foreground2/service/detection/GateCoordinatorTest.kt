@@ -235,11 +235,11 @@ class GateCoordinatorTest {
             prompt(YOUTUBE)
             val updates = coordinator.handle(GateInput.AnsweredYes(YOUTUBE))
             assertEquals(
-                listOf(GateUpdate(YOUTUBE, Prompting, PickingDuration, listOf(ShowDurationPicker), "YouTube")),
+                listOf(GateUpdate(YOUTUBE, Prompting, PickingDuration(), listOf(ShowDurationPicker), "YouTube")),
                 updates,
             )
             assertEquals(
-                listOf(GateUpdate(YOUTUBE, PickingDuration, Idle, listOf(HideOverlay), "YouTube")),
+                listOf(GateUpdate(YOUTUBE, PickingDuration(), Idle, listOf(HideOverlay), "YouTube")),
                 front(LAUNCHER),
             )
         }
@@ -276,7 +276,7 @@ class GateCoordinatorTest {
                 listOf(
                     GateUpdate(
                         YOUTUBE,
-                        PickingDuration,
+                        PickingDuration(),
                         Locked(until),
                         listOf(PersistLock(until), ShowLockScreen(until)),
                         "YouTube",
@@ -315,7 +315,7 @@ class GateCoordinatorTest {
                 listOf(
                     GateUpdate(
                         YOUTUBE,
-                        PickingDuration,
+                        PickingDuration(),
                         Locked(existing),
                         listOf(PersistLock(existing), ShowLockScreen(existing)),
                         "YouTube",

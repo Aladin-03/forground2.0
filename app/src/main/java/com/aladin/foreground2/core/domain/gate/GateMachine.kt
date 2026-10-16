@@ -31,6 +31,8 @@ object GateMachine {
             is GateEvent.BreathFinished -> onBreathFinished(state, event.now, timing)
             is GateEvent.AnsweredNo -> onAnsweredNo(state, event.now, timing)
             GateEvent.AnsweredYes -> onAnsweredYes(state)
+            is GateEvent.LockNowRequested -> onLockNowRequested(state, event.now, timing)
+            is GateEvent.PickerCancelled -> onPickerCancelled(state, event.now, timing)
             is GateEvent.LockStarted -> onLockStarted(state, event.until)
             is GateEvent.Tick -> onTick(state, event.now)
         }
@@ -58,7 +60,7 @@ object GateMachine {
         now: Long,
     ): Transition =
         when (state) {
-            Idle, is Breathing, Prompting, PickingDuration -> Transition(Idle, listOf(HideOverlay))
+            Idle, is Breathing, Prompting, is PickingDuration -> Transition(Idle, listOf(HideOverlay))
             is Allowed -> Transition(Idle)
             is Locked ->
                 if (state.isActive(now)) {
@@ -94,14 +96,47 @@ object GateMachine {
 
     /** Rule 6. */
     private fun onAnsweredYes(state: GateState): Transition =
-        if (state == Prompting) Transition(PickingDuration, listOf(ShowDurationPicker)) else Transition(state)
+        if (state == Prompting) Transition(PickingDuration(), listOf(ShowDurationPicker)) else Transition(state)
+
+    /** Rule 2 / 6: "Lock it now" mid-breath opens the picker, keeping what is left of the breath. */
+    private fun onLockNowRequested(
+        state: GateState,
+        now: Long,
+        timing: Timing,
+    ): Transition =
+        if (state is Breathing) {
+            val remaining =
+                (timing.breathDurationMillis - (now - state.startedAt)).coerceIn(
+                    0L,
+                    timing.breathDurationMillis,
+                )
+            Transition(PickingDuration(fromBreath = true, breathRemainingMs = remaining), listOf(ShowDurationPicker))
+        } else {
+            Transition(state)
+        }
+
+    /**
+     * Rule 2 / 6: cancelling a picker opened from the breath resumes the breath with the time it had left, however long
+     * the picker was open, so it never skips or shortens the breath. The Yes-path picker has no cancel.
+     */
+    private fun onPickerCancelled(
+        state: GateState,
+        now: Long,
+        timing: Timing,
+    ): Transition =
+        if (state is PickingDuration && state.fromBreath) {
+            val alreadyBreathed = timing.breathDurationMillis - state.breathRemainingMs
+            Transition(Breathing(startedAt = now - alreadyBreathed), listOf(ShowBreath))
+        } else {
+            Transition(state)
+        }
 
     /** Rule 6 / 9: the lock is persisted and the app (still in front) shows the lock screen. */
     private fun onLockStarted(
         state: GateState,
         until: Long,
     ): Transition =
-        if (state == PickingDuration) {
+        if (state is PickingDuration) {
             Transition(Locked(until), listOf(PersistLock(until), ShowLockScreen(until)))
         } else {
             Transition(state)
@@ -121,8 +156,8 @@ object GateMachine {
             state is Locked && !state.isActive(now) -> Transition(Idle, listOf(DeleteLock))
             else -> Transition(state)
         }
-
-    private fun startBreath(now: Long) = Transition(Breathing(startedAt = now), listOf(ShowBreath))
-
-    private fun Locked.isActive(now: Long): Boolean = now < until
 }
+
+private fun startBreath(now: Long) = Transition(Breathing(startedAt = now), listOf(ShowBreath))
+
+private fun Locked.isActive(now: Long): Boolean = now < until

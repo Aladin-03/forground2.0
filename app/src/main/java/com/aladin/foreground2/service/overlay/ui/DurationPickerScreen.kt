@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,13 +36,15 @@ private object Picker {
 
 /**
  * Rule 6: wheels for days, hours and minutes, a live "Unlocks at" preview, and Start (disabled at zero). [onStart]
- * gets the picked duration; the caller turns it into an end time.
+ * gets the picked duration; the caller turns it into an end time. [onBack] (only when opened with "Lock it now"
+ * during the breath) shows "Back to breath"; null hides it.
  */
 @Composable
 fun DurationPickerScreen(
     label: String,
     clock: Clock,
     onStart: (LockDuration) -> Unit,
+    onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var duration by remember { mutableStateOf(LockDuration.Zero) }
@@ -54,14 +57,24 @@ fun DurationPickerScreen(
     }
     val context = LocalContext.current
     val unlockAt = if (duration.isZero) null else formatUnlockTime(context, now + duration.millis)
-    DurationPickerContent(
-        label = label,
-        duration = duration,
-        unlockAt = unlockAt,
-        onDurationChange = { duration = it },
-        onStart = { onStart(duration) },
-        modifier = modifier,
-    )
+    Column(
+        modifier = modifier.fillMaxSize().safeDrawingPadding().padding(ForegroundTheme.spacing.lg),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        DurationPickerContent(
+            label = label,
+            duration = duration,
+            unlockAt = unlockAt,
+            onDurationChange = { duration = it },
+            onStart = { onStart(duration) },
+            modifier = Modifier.weight(1f),
+        )
+        if (onBack != null) {
+            TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.duration_back_to_breath))
+            }
+        }
+    }
 }
 
 @Composable
@@ -74,7 +87,7 @@ private fun DurationPickerContent(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().safeDrawingPadding().padding(ForegroundTheme.spacing.lg),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(ForegroundTheme.spacing.lg, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

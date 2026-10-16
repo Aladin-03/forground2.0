@@ -7,11 +7,11 @@ Personal Android app (sideloaded, single user). Every time the user enters a **w
 ## Behaviour rules
 
 1. **Watched apps** are picked from a list of all launcher apps on the phone. Unwatched apps are never touched.
-2. **Entry = breath.** A watched app becoming the front app after any other app (including switching back from WhatsApp) is an *entry*. Each entry shows a full-screen breathing overlay for 60 s. No buttons are interactive until it finishes. Back key does nothing.
+2. **Entry = breath.** A watched app becoming the front app after any other app (including switching back from WhatsApp) is an *entry*. Each entry shows a full-screen breathing overlay for 60 s. Back key does nothing. Its only interactive element is a **Lock it now** button at the bottom, under the line "Save your time, save your future."; it opens the duration picker straight away (rule 6). There is no way to say No or skip the breath.
 3. **Escaping doesn't skip.** If the user presses Home mid-breath, the overlay is removed. The next entry starts a fresh full minute.
 4. **Prompt.** After the breath: "Block this app?" with Yes / No.
 5. **No = allowed window.** The overlay goes away and the app is usable until `now + 10 min`. If the app is still in front when the window ends, the breath overlay appears on the spot, then the prompt again. Leaving the app ends the sitting; the next entry gets a breath (rule 2).
-6. **Yes = duration picker.** Scroll wheels for days (0–30), hours (0–23), minutes (0–59), plus Start. Start is disabled at zero. Once started, a lock cannot be cancelled or shortened.
+6. **Yes = duration picker.** Scroll wheels for days (0–30), hours (0–23), minutes (0–59), plus Start. Start is disabled at zero. Once started, a lock cannot be cancelled or shortened. The picker opened by **Lock it now** (rule 2) starts locks exactly like the Yes path, and also has **Back to breath**, which returns to the breath with the time it had left when Lock it now was tapped: the breath's countdown is paused while the picker is open, so going back can never skip or shorten it, however long the picker stayed up. Leaving the app from either picker ends the sitting as in rule 3. The Yes-path picker has no Back.
 7. **Locked.** Entering a locked app skips the breath and shows "Unlocks in Xd Yh Zm" (live countdown) with a single **Go home** button.
 8. **Independent locks.** Each app has its own lock. When it expires, the app goes back to rule 2.
 9. **Persistence.** A lock is stored as its end time (epoch ms). Locks survive reboots and process death. The allowed window is in memory only; losing it just means a fresh breath.

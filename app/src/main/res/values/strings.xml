@@ -86,6 +86,8 @@
   <string name="breath_out">Breathe out</string>
   <!-- Seconds left in the breath, as minutes:seconds, e.g. 0:42. -->
   <string name="breath_countdown">%1$d:%2$02d</string>
+  <string name="breath_lock_now_tagline">Save your time, save your future.</string>
+  <string name="breath_lock_now">Lock it now</string>
 
   <string name="prompt_question">Block this app?</string>
   <string name="prompt_yes">Yes</string>
@@ -101,6 +103,8 @@
   <string name="duration_pick_hint">Pick how long to lock it</string>
   <string name="duration_final">Once started, a lock can\'t be cancelled or shortened.</string>
   <string name="duration_start">Start</string>
+  <!-- Only on a picker opened with "Lock it now" during the breath. -->
+  <string name="duration_back_to_breath">Back to breath</string>
 
   <!-- %1$s is the app's label. -->
   <string name="lock_title">%1$s is locked</string>
