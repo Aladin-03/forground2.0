@@ -11,7 +11,13 @@ private const val OWN = "com.aladin.foreground2"
 private const val YOUTUBE = "com.google.android.youtube"
 private const val LAUNCHER = "com.transsion.hilauncher"
 private const val START = 1_700_000_000_000L
-private val TIMING = Timing(breathDurationMillis = 10_000L, allowedWindowMillis = 60_000L, pollIntervalMillis = 500L)
+private val TIMING =
+    Timing(
+        breathDurationMillis = 10_000L,
+        allowedWindowMillis = 60_000L,
+        pollIntervalMillis = 500L,
+        permissionCheckIntervalMillis = 5_000L,
+    )
 
 /** Usage log backed by a list; records each queried window. */
 private class FakeUsageEventSource : UsageEventSource {
@@ -54,6 +60,18 @@ class FrontAppDetectorTest {
         source.events += ResumedEvent(LAUNCHER, START + 200)
         clock.advanceBy(500)
         assertEquals(listOf(FrontAppChanged(LAUNCHER, START + 200)), detector.poll())
+    }
+
+    @Test
+    fun `after a reset the app still in front is reported again`() {
+        source.events += ResumedEvent(YOUTUBE, START - 60_000)
+        assertEquals(listOf(FrontAppChanged(YOUTUBE, START)), detector.poll())
+        clock.advanceBy(500)
+        assertEquals(emptyList<FrontAppChanged>(), detector.poll())
+
+        detector.reset()
+        clock.advanceBy(500)
+        assertEquals(listOf(FrontAppChanged(YOUTUBE, START + 1_000)), detector.poll())
     }
 
     @Test

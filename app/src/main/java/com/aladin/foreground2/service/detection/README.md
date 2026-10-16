@@ -1,1 +1,1 @@
-Foreground service (type specialUse) that polls UsageStatsManager for the front app and feeds the gate state machine. Boot receiver lives here too.
+Foreground service (type specialUse) that polls UsageStatsManager for the front app and feeds the gate state machine; its notifications (ongoing + missing-permission alert) and running status. Boot receiver lives here too.

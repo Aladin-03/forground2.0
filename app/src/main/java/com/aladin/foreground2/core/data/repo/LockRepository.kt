@@ -4,6 +4,8 @@ import com.aladin.foreground2.core.data.db.LockDao
 import com.aladin.foreground2.core.data.db.LockEntity
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.logging.Log
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,6 +13,12 @@ import javax.inject.Singleton
 interface LockRepository {
     /** Package name -> unlock time, for every lock that hasn't ended yet. */
     suspend fun activeLocks(): Map<String, Long>
+
+    /**
+     * Package name -> unlock time for every stored lock, soonest first, re-emitted on each change. May include locks
+     * that ended but haven't been deleted yet; callers compare against the clock.
+     */
+    fun observeLocks(): Flow<Map<String, Long>>
 
     /**
      * Locks [packageName] until [unlockAtMillis]. If it already has a lock ending later, that one is kept. Returns
@@ -34,6 +42,9 @@ class RoomLockRepository
     ) : LockRepository {
         override suspend fun activeLocks(): Map<String, Long> =
             dao.activeAt(clock.nowMillis()).associate { it.packageName to it.unlockAtMillis }
+
+        override fun observeLocks(): Flow<Map<String, Long>> =
+            dao.observeAll().map { rows -> rows.associate { it.packageName to it.unlockAtMillis } }
 
         override suspend fun lock(
             packageName: String,

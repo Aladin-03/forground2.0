@@ -3,6 +3,7 @@ package com.aladin.foreground2.core.data.repo
 import com.aladin.foreground2.core.data.db.LockDao
 import com.aladin.foreground2.core.data.db.LockEntity
 import com.aladin.foreground2.core.domain.FakeClock
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -16,6 +17,8 @@ class RoomLockRepositoryTest {
     /** Implements only the queries, so [LockDao.upsertKeepingLater]'s real default body runs. */
     private class FakeLockDao : LockDao {
         val rows = mutableMapOf<String, LockEntity>()
+
+        override fun observeAll() = flowOf(rows.values.sortedBy { it.unlockAtMillis })
 
         override suspend fun activeAt(nowMillis: Long) = rows.values.filter { it.unlockAtMillis > nowMillis }
 

@@ -90,10 +90,17 @@ class GateCoordinator
             states[packageName] ?: lockedUntil[packageName]?.let(GateState::Locked) ?: GateState.Idle
 
         /**
-         * Loads the active locks so a restarted service keeps enforcing them (rule 9), deleting any that ended while
-         * it wasn't running. Call before [handle].
+         * Starts from scratch for a (re)started service: forgets every in-memory gate (allowed windows are lost by
+         * design, rule 9; any overlay was removed when the service stopped), then loads the active locks from the
+         * repository so they keep being enforced, deleting any that ended while it wasn't running. Call before
+         * [handle], then send the watched list.
          */
         suspend fun loadLocks() {
+            if (states.isNotEmpty()) Log.i(Log.Area.Gate) { "reset, dropping in-memory gates $states" }
+            states.clear()
+            lockedUntil.clear()
+            watched = emptyMap()
+            front = null
             locks.deleteEnded()
             val active = locks.activeLocks()
             lockedUntil.putAll(active)

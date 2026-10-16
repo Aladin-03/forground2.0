@@ -1,21 +1,17 @@
 package com.aladin.foreground2.service.detection
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.aladin.foreground2.MainActivity
-import com.aladin.foreground2.R
 import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.logging.Log
+import com.aladin.foreground2.core.permissions.Permission
+import com.aladin.foreground2.core.permissions.PermissionChecker
+import com.aladin.foreground2.core.permissions.missingRequired
 import com.aladin.foreground2.service.overlay.OverlayEffects
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -40,6 +37,10 @@ import javax.inject.Inject
  * Foreground service (type specialUse) that keeps detection alive: polls the front app while the screen is on and
  * unlocked, and feeds front-app changes, poll ticks, overlay events and the watched-apps list into [GateCoordinator].
  * The coordinator's overlay effects are carried out by [OverlayEffects].
+ *
+ * START_STICKY, so the system recreates it after killing the process; [BootReceiver] starts it after a reboot. Every
+ * start rereads the locks from Room. While running it rechecks the required permissions and posts an alert if one is
+ * revoked (detection or overlays silently stop working otherwise), clearing it once they are back.
  */
 @AndroidEntryPoint
 class DetectionService : Service() {
@@ -57,6 +58,12 @@ class DetectionService : Service() {
 
     @Inject lateinit var timing: Timing
 
+    @Inject lateinit var permissionChecker: PermissionChecker
+
+    @Inject lateinit var notifications: DetectionNotifications
+
+    @Inject lateinit var status: DetectionStatus
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
 
@@ -72,13 +79,16 @@ class DetectionService : Service() {
     ): Int {
         ServiceCompat.startForeground(
             this,
-            NOTIFICATION_ID,
-            buildNotification(),
+            DetectionNotifications.ONGOING_NOTIFICATION_ID,
+            notifications.ongoing(),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
         )
+        status.setRunning(true)
         if (job == null) {
+            // intent is null when the system recreates the service after killing the process (START_STICKY).
             Log.i(Log.Area.Detect) { "service started (restart=${intent == null})" }
             job = scope.launch { run() }
+            scope.launch { watchPermissions() }
         }
         return START_STICKY
     }
@@ -86,6 +96,7 @@ class DetectionService : Service() {
     override fun onDestroy() {
         scope.cancel()
         overlays.hideAll()
+        status.setRunning(false)
         Log.i(Log.Area.Detect) { "service onDestroy" }
         super.onDestroy()
     }
@@ -94,7 +105,9 @@ class DetectionService : Service() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun run() {
-        // Load locks and the watched list before the first poll so an app already in front is recognised.
+        // Locks are read from Room on every start. Load them and the watched list before the first poll, so an app
+        // already in front is recognised (as a fresh entry, since the detector starts over too).
+        detector.reset()
         coordinator.loadLocks()
         val watched = watchedApps.observeWatched().stateIn(scope)
         coordinator.handle(GateInput.WatchedChanged(watched.value))
@@ -118,36 +131,27 @@ class DetectionService : Service() {
             }
         }
 
-    private fun buildNotification(): Notification {
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.detection_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply { setShowBadge(false) },
-        )
-        val openApp =
-            PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
-            )
-        return NotificationCompat
-            .Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.detection_notification_title))
-            .setContentText(getString(R.string.detection_notification_text))
-            .setContentIntent(openApp)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+    /**
+     * Keeps running while a permission is missing: detection and overlays pick up again by themselves once it is
+     * granted back, and the alert is cleared.
+     */
+    private suspend fun watchPermissions() {
+        missingPermissions().collect { missing ->
+            if (missing.isEmpty()) {
+                Log.i(Log.Area.Perm) { "required permissions granted" }
+                notifications.clearPermissionsMissing()
+            } else {
+                Log.w(Log.Area.Perm) { "required permissions missing=$missing" }
+                notifications.showPermissionsMissing(missing)
+            }
+        }
     }
 
-    private companion object {
-        const val CHANNEL_ID = "detection"
-        const val NOTIFICATION_ID = 1
-    }
+    private fun missingPermissions(): Flow<List<Permission>> =
+        flow {
+            while (true) {
+                emit(permissionChecker.missingRequired())
+                delay(timing.permissionCheckIntervalMillis)
+            }
+        }.distinctUntilChanged()
 }

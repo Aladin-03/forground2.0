@@ -31,13 +31,20 @@ android {
             buildConfigField("long", "BREATH_DURATION_MS", "10_000L")
             buildConfigField("long", "ALLOWED_WINDOW_MS", "60_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
+            buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
             buildConfigField("boolean", "LOGGING_ENABLED", "true")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Sideloaded single-user app: signed with the local debug key so the release APK installs with adb.
+            // Updates must keep using the same key, or Android refuses them (uninstall first, which wipes locks).
+            signingConfig = signingConfigs.getByName("debug")
             buildConfigField("long", "BREATH_DURATION_MS", "60_000L")
             buildConfigField("long", "ALLOWED_WINDOW_MS", "900_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
+            buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
             buildConfigField("boolean", "LOGGING_ENABLED", "false")
         }
     }

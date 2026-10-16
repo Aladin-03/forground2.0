@@ -17,6 +17,7 @@ import com.aladin.foreground2.core.domain.gate.GateState.Idle
 import com.aladin.foreground2.core.domain.gate.GateState.Locked
 import com.aladin.foreground2.core.domain.gate.GateState.PickingDuration
 import com.aladin.foreground2.core.domain.gate.GateState.Prompting
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -29,7 +30,13 @@ private const val LAUNCHER = "com.transsion.hilauncher"
 private const val WHATSAPP = "com.whatsapp"
 private const val START = 1_700_000_000_000L
 private const val HOUR = 3_600_000L
-private val TIMING = Timing(breathDurationMillis = 10_000L, allowedWindowMillis = 60_000L, pollIntervalMillis = 500L)
+private val TIMING =
+    Timing(
+        breathDurationMillis = 10_000L,
+        allowedWindowMillis = 60_000L,
+        pollIntervalMillis = 500L,
+        permissionCheckIntervalMillis = 5_000L,
+    )
 
 /** In-memory [LockRepository] with the same keep-the-later-end rule as the Room one. */
 private class FakeLockRepository(
@@ -38,6 +45,8 @@ private class FakeLockRepository(
     val stored = mutableMapOf<String, Long>()
 
     override suspend fun activeLocks(): Map<String, Long> = stored.filterValues { it > clock.now }
+
+    override fun observeLocks() = flowOf(stored.toMap())
 
     override suspend fun lock(
         packageName: String,
@@ -333,6 +342,28 @@ class GateCoordinatorTest {
             )
             assertEquals(Idle, restarted.stateOf(INSTAGRAM))
             assertEquals(mapOf(YOUTUBE to until), locks.stored)
+        }
+
+    @Test
+    fun `reloading on a service restart in the same process drops in-memory gates but keeps locks`() =
+        runTest {
+            front(YOUTUBE)
+            assertEquals(Breathing(START), coordinator.stateOf(YOUTUBE))
+            val until = clock.now + HOUR
+            locks.stored[INSTAGRAM] = until
+
+            coordinator.loadLocks()
+            coordinator.handle(
+                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
+            )
+            assertEquals(Idle, coordinator.stateOf(YOUTUBE))
+            assertEquals(Locked(until), coordinator.stateOf(INSTAGRAM))
+            // The detector starts over too, so the app in front is entered afresh: a new full breath.
+            clock.advanceBy(TIMING.pollIntervalMillis)
+            assertEquals(
+                listOf(GateUpdate(YOUTUBE, Idle, Breathing(clock.now), listOf(ShowBreath), "YouTube")),
+                front(YOUTUBE),
+            )
         }
 
     @Test

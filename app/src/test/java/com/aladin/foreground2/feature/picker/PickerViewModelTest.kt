@@ -21,6 +21,8 @@ private class FakeLauncherAppSource(
     override suspend fun launcherApps(): List<AppInfo> = apps
 
     override suspend fun icon(packageName: String): ImageBitmap? = null
+
+    override suspend fun label(packageName: String): String? = apps.find { it.packageName == packageName }?.label
 }
 
 private class FakeWatchedAppsRepository : WatchedAppsRepository {

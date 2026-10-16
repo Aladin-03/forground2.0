@@ -7,6 +7,6 @@ import org.junit.jupiter.api.Test
 class TimingTest {
     @Test
     fun `debug build uses short timings`() {
-        assertEquals(Timing(10_000L, 60_000L, 500L), Timing.fromBuildConfig())
+        assertEquals(Timing(10_000L, 60_000L, 500L, 5_000L), Timing.fromBuildConfig())
     }
 }

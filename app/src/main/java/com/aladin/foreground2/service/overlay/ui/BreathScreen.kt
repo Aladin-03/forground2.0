@@ -31,7 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.Clock
-import com.aladin.foreground2.service.overlay.Countdown
+import com.aladin.foreground2.core.domain.Countdown
 
 private object Breath {
     /** 5 s in, 5 s out: six breaths a minute. */

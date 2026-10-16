@@ -28,6 +28,7 @@ private class FakeSettingsRepository : SettingsRepository {
 }
 
 private class FakeDetectionServiceController : DetectionServiceController {
+    override val running = MutableStateFlow(false)
     var starts = 0
 
     override fun startIfReady(): Boolean {

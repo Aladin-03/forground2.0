@@ -18,7 +18,13 @@ import org.junit.jupiter.api.extension.RegisterExtension
 private const val YOUTUBE = "com.google.android.youtube"
 private const val INSTAGRAM = "com.instagram.android"
 private const val START = 1_700_000_000_000L
-private val TIMING = Timing(breathDurationMillis = 10_000L, allowedWindowMillis = 60_000L, pollIntervalMillis = 500L)
+private val TIMING =
+    Timing(
+        breathDurationMillis = 10_000L,
+        allowedWindowMillis = 60_000L,
+        pollIntervalMillis = 500L,
+        permissionCheckIntervalMillis = 5_000L,
+    )
 
 class OverlayEffectsTest {
     @JvmField
@@ -44,6 +50,8 @@ class OverlayEffectsTest {
         override suspend fun launcherApps(): List<AppInfo> = emptyList()
 
         override suspend fun icon(packageName: String): ImageBitmap? = null
+
+        override suspend fun label(packageName: String): String? = null
     }
 
     private val host = FakeHost()

@@ -22,10 +22,19 @@ class FrontAppDetector
         private val source: UsageEventSource,
         private val clock: Clock,
         private val timing: Timing,
-        @OwnPackageName ownPackage: String,
+        @param:OwnPackageName private val ownPackage: String,
     ) {
-        private val tracker = FrontAppTracker(ownPackage)
+        private var tracker = FrontAppTracker(ownPackage)
         private var lastPollAt: Long? = null
+
+        /**
+         * Forgets what is in front, so the next poll looks back again and reports the current app as a fresh entry.
+         * Called when the service (re)starts, together with [GateCoordinator.loadLocks].
+         */
+        fun reset() {
+            tracker = FrontAppTracker(ownPackage)
+            lastPollAt = null
+        }
 
         fun changes(): Flow<FrontAppChanged> =
             flow {

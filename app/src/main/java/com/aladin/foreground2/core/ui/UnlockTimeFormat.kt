@@ -1,4 +1,4 @@
-package com.aladin.foreground2.service.overlay
+package com.aladin.foreground2.core.ui
 
 import android.content.Context
 import android.text.format.DateFormat

@@ -13,12 +13,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -29,9 +26,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.Clock
-import com.aladin.foreground2.service.overlay.Countdown
-import com.aladin.foreground2.service.overlay.LockRemaining
-import com.aladin.foreground2.service.overlay.formatUnlockTime
+import com.aladin.foreground2.core.domain.LockRemaining
+import com.aladin.foreground2.core.ui.formatUnlockTime
+import com.aladin.foreground2.core.ui.lockRemainingText
+import com.aladin.foreground2.core.ui.rememberLockRemaining
 
 /**
  * Rule 7: the app's icon and label, a live "Unlocks in ..." countdown to [until] (epoch ms), the exact unlock time,
@@ -48,14 +46,11 @@ fun LockScreen(
     modifier: Modifier = Modifier,
 ) {
     val icon by produceState<ImageBitmap?>(initialValue = null, loadIcon) { value = loadIcon() }
-    val countdown = remember(until, clock) { Countdown(until, clock) }
-    var secondsLeft by remember(countdown) { mutableIntStateOf(countdown.secondsLeftNow()) }
-    LaunchedEffect(countdown) { countdown.secondsLeft().collect { secondsLeft = it } }
     val context = LocalContext.current
     LockContent(
         label = label,
         icon = icon,
-        remaining = LockRemaining.of(secondsLeft),
+        remaining = rememberLockRemaining(until, clock),
         unlockAt = remember(until) { formatUnlockTime(context, until) },
         onGoHome = onGoHome,
         modifier = modifier,
@@ -93,7 +88,7 @@ private fun LockContent(
                 if (remaining == LockRemaining.Ended) {
                     stringResource(R.string.lock_ended)
                 } else {
-                    stringResource(R.string.lock_unlocks_in, remainingText(remaining))
+                    stringResource(R.string.lock_unlocks_in, lockRemainingText(remaining))
                 },
             style = MaterialTheme.typography.displaySmall,
             color = MaterialTheme.colorScheme.onBackground,
@@ -115,17 +110,6 @@ private fun LockContent(
         }
     }
 }
-
-@Composable
-private fun remainingText(remaining: LockRemaining): String =
-    when (remaining) {
-        is LockRemaining.Days ->
-            stringResource(R.string.lock_remaining_days, remaining.days, remaining.hours, remaining.minutes)
-        is LockRemaining.Hours -> stringResource(R.string.lock_remaining_hours, remaining.hours, remaining.minutes)
-        is LockRemaining.Minutes ->
-            stringResource(R.string.lock_remaining_minutes, remaining.minutes, remaining.seconds)
-        LockRemaining.Ended -> ""
-    }
 
 @Preview
 @Composable

@@ -1,6 +1,5 @@
-package com.aladin.foreground2.service.overlay
+package com.aladin.foreground2.core.domain
 
-import com.aladin.foreground2.core.domain.Clock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList

@@ -26,7 +26,7 @@ import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.domain.LockDuration
-import com.aladin.foreground2.service.overlay.formatUnlockTime
+import com.aladin.foreground2.core.ui.formatUnlockTime
 import kotlinx.coroutines.delay
 
 private object Picker {

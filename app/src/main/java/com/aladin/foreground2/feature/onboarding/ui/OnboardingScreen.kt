@@ -5,7 +5,6 @@ import android.os.Build
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,8 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.permissions.Permission
+import com.aladin.foreground2.core.permissions.bodyRes
 import com.aladin.foreground2.core.permissions.openAutostartSettings
 import com.aladin.foreground2.core.permissions.openSettingsFor
+import com.aladin.foreground2.core.permissions.titleRes
 import com.aladin.foreground2.feature.onboarding.OnboardingUiState
 import com.aladin.foreground2.feature.onboarding.OnboardingViewModel
 import com.aladin.foreground2.feature.onboarding.PermissionStatus
@@ -137,14 +138,13 @@ private fun PermissionCard(
     status: PermissionStatus,
     onGrant: () -> Unit,
 ) {
-    val text = status.permission.text()
     StepCard(
-        title = stringResource(text.title),
+        title = stringResource(status.permission.titleRes),
         tag =
             stringResource(
                 if (status.permission.required) R.string.onboarding_required else R.string.onboarding_recommended,
             ),
-        body = stringResource(text.body),
+        body = stringResource(status.permission.bodyRes),
     ) {
         Text(
             text = stringResource(if (status.granted) R.string.onboarding_granted else R.string.onboarding_not_granted),
@@ -213,21 +213,6 @@ private fun StepCard(
         }
     }
 }
-
-private class PermissionText(
-    @StringRes val title: Int,
-    @StringRes val body: Int,
-)
-
-private fun Permission.text(): PermissionText =
-    when (this) {
-        Permission.UsageAccess -> PermissionText(R.string.permission_usage_title, R.string.permission_usage_body)
-        Permission.Overlay -> PermissionText(R.string.permission_overlay_title, R.string.permission_overlay_body)
-        Permission.Notifications ->
-            PermissionText(R.string.permission_notifications_title, R.string.permission_notifications_body)
-        Permission.BatteryOptimization ->
-            PermissionText(R.string.permission_battery_title, R.string.permission_battery_body)
-    }
 
 @Preview(showBackground = true)
 @Composable

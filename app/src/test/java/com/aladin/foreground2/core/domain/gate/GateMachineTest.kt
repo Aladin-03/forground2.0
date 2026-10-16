@@ -22,10 +22,22 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
 /** Debug timings (breath 10 s, window 1 min), matching the debug BuildConfig. */
-private val DEBUG = Timing(breathDurationMillis = 10_000L, allowedWindowMillis = 60_000L, pollIntervalMillis = 500L)
+private val DEBUG =
+    Timing(
+        breathDurationMillis = 10_000L,
+        allowedWindowMillis = 60_000L,
+        pollIntervalMillis = 500L,
+        permissionCheckIntervalMillis = 5_000L,
+    )
 
 /** Release timings (breath 60 s, window 15 min). */
-private val RELEASE = Timing(breathDurationMillis = 60_000L, allowedWindowMillis = 900_000L, pollIntervalMillis = 500L)
+private val RELEASE =
+    Timing(
+        breathDurationMillis = 60_000L,
+        allowedWindowMillis = 900_000L,
+        pollIntervalMillis = 500L,
+        permissionCheckIntervalMillis = 5_000L,
+    )
 
 private const val MINUTE = 60_000L
 private const val DAY = 24 * 60 * MINUTE

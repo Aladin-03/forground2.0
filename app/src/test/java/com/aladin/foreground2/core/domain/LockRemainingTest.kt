@@ -1,4 +1,4 @@
-package com.aladin.foreground2.service.overlay
+package com.aladin.foreground2.core.domain
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

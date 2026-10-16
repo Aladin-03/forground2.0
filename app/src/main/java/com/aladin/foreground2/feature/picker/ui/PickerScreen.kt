@@ -1,6 +1,5 @@
 package com.aladin.foreground2.feature.picker.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -21,7 +19,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -35,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.AppInfo
+import com.aladin.foreground2.core.ui.AppIcon
 import com.aladin.foreground2.feature.picker.PickerItem
 import com.aladin.foreground2.feature.picker.PickerUiState
 import com.aladin.foreground2.feature.picker.PickerViewModel
@@ -141,21 +139,6 @@ private fun PickerRow(
         )
         // The row handles the toggle; the switch only shows state.
         Switch(checked = item.watched, onCheckedChange = null)
-    }
-}
-
-@Composable
-private fun AppIcon(
-    packageName: String,
-    loadIcon: suspend (String) -> ImageBitmap?,
-) {
-    val size = ForegroundTheme.sizing.appIcon
-    val icon by produceState<ImageBitmap?>(initialValue = null, packageName) { value = loadIcon(packageName) }
-    val bitmap = icon
-    if (bitmap != null) {
-        Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(size))
-    } else {
-        Box(Modifier.size(size))
     }
 }
 

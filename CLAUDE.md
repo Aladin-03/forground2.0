@@ -16,9 +16,10 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 | `core/data/db/` | Room database, entities, DAOs |
 | `core/data/apps/` | Installed-app sources via PackageManager (launcher app list, icons) |
 | `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs |
-| `core/permissions/` | Permission checks and Settings deep-link intents |
+| `core/permissions/` | Permission checks, their display names, and Settings deep-link intents |
+| `core/ui/` | Compose helpers shared by app screens and overlays (app icon, lock countdown text, unlock-time format) |
 | `core/logging/` | `Log.kt`, the only logger |
-| `core/config/` | `Timing.kt` (breath, window, poll interval from BuildConfig) |
+| `core/config/` | `Timing.kt` (breath, window, poll and permission-check intervals from BuildConfig) |
 | `feature/{onboarding,picker,home}/` | ViewModel + route; Composables in `ui/` |
 | `service/detection/` | Foreground service + front-app detection (UsageStatsManager) |
 | `service/overlay/` | Overlay window host + overlay screens |
@@ -40,6 +41,7 @@ Each package has a README.md with a one-line description.
 - **Time through `Clock` and `Timing`.** Never call `System.currentTimeMillis()` or read timing constants
   directly; inject `Clock` (use `FakeClock` in tests) and `Timing`.
   Debug: breath 10 s, window 1 min, poll 500 ms. Release: breath 60 s, window 15 min, poll 500 ms.
+  Both: permission recheck 5 s (the service posts an alert while Usage access / overlay is revoked).
 - Unit tests: JUnit 5 + kotlinx-coroutines-test + Turbine, under `app/src/test/`.
 
 ## Commands
@@ -48,6 +50,7 @@ Each package has a README.md with a one-line description.
 ./gradlew assembleDebug                # build
 ./gradlew detekt ktlintCheck           # static analysis (ktlintFormat auto-fixes style)
 ./gradlew testDebugUnitTest            # unit tests (:detekt-rules:test for the lint rules)
+./gradlew assembleRelease              # R8-minified release APK, signed with the local debug key
 ./gradlew installDebug                 # install on the connected device (Infinix X6871)
 adb logcat -s FG2                      # app logs
 ```

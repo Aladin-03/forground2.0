@@ -1,4 +1,4 @@
-package com.aladin.foreground2.service.overlay
+package com.aladin.foreground2.core.domain
 
 /** The lock screen's "Unlocks in ..." countdown (rule 7), split into the units it shows. */
 sealed interface LockRemaining {

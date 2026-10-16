@@ -11,6 +11,8 @@ data class Timing(
     val breathDurationMillis: Long,
     val allowedWindowMillis: Long,
     val pollIntervalMillis: Long,
+    /** How often the running service rechecks that Usage access and the overlay permission are still granted. */
+    val permissionCheckIntervalMillis: Long,
 ) {
     companion object {
         fun fromBuildConfig(): Timing =
@@ -18,6 +20,7 @@ data class Timing(
                 breathDurationMillis = BuildConfig.BREATH_DURATION_MS,
                 allowedWindowMillis = BuildConfig.ALLOWED_WINDOW_MS,
                 pollIntervalMillis = BuildConfig.POLL_INTERVAL_MS,
+                permissionCheckIntervalMillis = BuildConfig.PERMISSION_CHECK_INTERVAL_MS,
             )
     }
 }

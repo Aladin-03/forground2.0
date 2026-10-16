@@ -26,6 +26,7 @@ Accessibility service · clock-tamper protection · broken-lock logging · speci
 - **Overlay:** a `WindowManager` window of type `TYPE_APPLICATION_OVERLAY`, full screen, focusable, consuming touches and the back key, hosting a `ComposeView`. The service must provide the `ComposeView` with a `LifecycleOwner`, `ViewModelStoreOwner` and `SavedStateRegistryOwner` by hand.
 - **App list:** `PackageManager.queryIntentActivities(ACTION_MAIN + CATEGORY_LAUNCHER)` with a matching `<queries>` manifest entry. No `QUERY_ALL_PACKAGES`.
 - **Storage:** Room for watched apps and locks; DataStore Preferences for flags (e.g. onboarding done).
+- **Reliability:** the service is `START_STICKY` and restarted by a `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED` receiver. Every start rereads locks from Room and starts gates fresh. While running it rechecks the required permissions every few seconds and posts an alert notification if Usage access or the overlay permission is revoked (cleared once regranted). The home screen shows locks, permission and service status, with one button to fix the most urgent problem.
 
 ### Permissions
 

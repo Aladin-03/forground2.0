@@ -23,6 +23,9 @@ interface LauncherAppSource {
 
     /** The app's launcher icon, or null if it is no longer installed. */
     suspend fun icon(packageName: String): ImageBitmap?
+
+    /** The app's label, or null if it is no longer installed. */
+    suspend fun label(packageName: String): String?
 }
 
 /**
@@ -67,6 +70,16 @@ class PackageManagerLauncherAppSource
                 }
             }
         }
+
+        override suspend fun label(packageName: String): String? =
+            withContext(Dispatchers.IO) {
+                try {
+                    packageManager.getApplicationInfo(packageName, 0).loadLabel(packageManager).toString()
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Log.w(Log.Area.DB, e) { "label not found pkg=$packageName" }
+                    null
+                }
+            }
 
         private fun queryLauncherActivities(intent: Intent): List<ResolveInfo> =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

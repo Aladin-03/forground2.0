@@ -3,6 +3,15 @@
   <string name="app_name">Foreground 2.0</string>
 
   <string name="home_open_picker">Watched apps</string>
+  <string name="home_status_ok">Foreground is on and has every permission it needs.</string>
+  <!-- %1$s is a permission name, e.g. Usage access, or several separated by commas. -->
+  <string name="home_status_missing">%1$s is off, so watched apps aren\'t being paused.</string>
+  <string name="home_status_stopped">Foreground isn\'t running, so watched apps aren\'t being paused.</string>
+  <string name="home_status_battery">Foreground is on, but battery use is restricted, so Android may stop it in the background.</string>
+  <string name="home_fix">Fix</string>
+  <string name="home_start">Start</string>
+  <string name="home_locks_title">Locked apps</string>
+  <string name="home_locks_empty">No apps are locked.</string>
 
   <string name="picker_title">Watched apps</string>
   <string name="picker_search_hint">Search apps</string>
@@ -25,6 +34,8 @@
   <string name="permission_notifications_title">Notifications</string>
   <string name="permission_notifications_body">Android requires an ongoing notification for the background service that watches for apps.</string>
   <string name="permission_battery_title">Unrestricted battery use</string>
+  <!-- Joins permission names in a list, e.g. "Usage access, Display over other apps". -->
+  <string name="permission_list_separator">", "</string>
   <string name="permission_battery_body">Stops Android from putting Foreground to sleep, which would stop it noticing watched apps.</string>
 
   <string name="onboarding_autostart_title">Autostart</string>
@@ -71,4 +82,9 @@
   <string name="detection_channel_name">Watching apps</string>
   <string name="detection_notification_title">Foreground is on</string>
   <string name="detection_notification_text">Watching for the apps you chose to pause.</string>
+
+  <string name="problem_channel_name">Setup problems</string>
+  <string name="problem_notification_title">Foreground can\'t pause your apps</string>
+  <!-- %1$s is a permission name, e.g. Usage access, or several separated by commas. -->
+  <string name="problem_notification_text">%1$s is turned off. Tap to fix it.</string>
 </resources>
