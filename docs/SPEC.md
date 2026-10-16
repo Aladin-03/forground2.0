@@ -18,7 +18,13 @@ Personal Android app (sideloaded, single user). Every time the user enters a **w
 
 ## Daily stats
 
-A Stats screen, opened from Home, shows today's unlocks, total screen time and per-app foreground time, most used first. "Today" starts at local midnight. Computed from the same usage log as detection (`queryEvents` since midnight): an unlock is a `KEYGUARD_HIDDEN` event; app time comes from `ACTIVITY_RESUMED`/`ACTIVITY_PAUSED` pairs, clipped at midnight, with a still-open session counted up to now. The default launcher, system UI and this app get no time. No widgets.
+A Stats screen, opened from Home, shows today's unlocks, total screen time and per-app foreground time, most used first. "Today" starts at local midnight. Computed from the same usage log as detection (`queryEvents` since midnight): an unlock is a `KEYGUARD_HIDDEN` event; app time comes from `ACTIVITY_RESUMED`/`ACTIVITY_PAUSED` pairs, clipped at midnight, with a still-open session counted up to now. The default launcher, system UI and this app get no time. 
+### Widgets
+
+Two Glance home-screen widgets in the app's colours (light and dark), both opening the Stats screen when tapped:
+**Unlocks** ("Unlocks today" + count) and **Screen time** ("Screen time today" + total; at medium size, also the top three apps with times).
+
+Refreshes come from the detection service: on every unlock, then every 5 minutes while unlocked, plus one just after local midnight so both reset on time. `updatePeriodMillis` (30 min) is only a fallback. Nothing refreshes while the screen is off, and each widget refreshes at most once a minute (a throttled refresh is deferred until allowed; the first refresh of a new day always goes through).
 
 ## Out of scope
 

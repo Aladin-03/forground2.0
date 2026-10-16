@@ -4,7 +4,7 @@ Personal Android app: entering a watched app triggers a breathing pause, then th
 window or locks the app. Full behaviour and technical approach: **docs/SPEC.md** (read it before changing behaviour).
 
 Single `app` module, package `com.aladin.foreground2`. Kotlin, Compose (Material 3), Hilt, Room, DataStore
-Preferences, Navigation Compose (type-safe `@Serializable` routes), KSP. minSdk 29, target/compile 35.
+Preferences, Navigation Compose (type-safe `@Serializable` routes), Glance (widgets), KSP. minSdk 29, target/compile 35.
 All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooling (custom detekt rules), not app code.
 
 ## Package map (`app/src/main/java/com/aladin/foreground2/`)
@@ -23,6 +23,7 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 | `feature/{onboarding,picker,home,stats}/` | ViewModel + route; Composables in `ui/` |
 | `service/detection/` | Foreground service + front-app detection (UsageStatsManager) |
 | `service/overlay/` | Overlay window host + overlay screens |
+| `widget/` | Home-screen widgets (Glance): unlocks and screen time, their receivers, throttled refresh |
 | `di/` | Hilt modules |
 
 Each package has a README.md with a one-line description.
@@ -41,7 +42,8 @@ Each package has a README.md with a one-line description.
 - **Time through `Clock` and `Timing`.** Never call `System.currentTimeMillis()` or read timing constants
   directly; inject `Clock` (use `FakeClock` in tests) and `Timing`.
   Debug: breath 10 s, window 1 min, poll 500 ms. Release: breath 60 s, window 10 min, poll 500 ms.
-  Both: permission recheck 5 s (the service posts an alert while Usage access / overlay is revoked).
+  Both: permission recheck 5 s (the service posts an alert while Usage access / overlay is revoked), widget
+  refresh every 5 min while unlocked, at most once a minute per widget.
 - Unit tests: JUnit 5 + kotlinx-coroutines-test + Turbine, under `app/src/test/`.
 
 ## Commands

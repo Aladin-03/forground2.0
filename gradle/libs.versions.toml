@@ -6,6 +6,7 @@ hilt = "2.57.1"
 hiltNavigationCompose = "1.2.0"
 room = "2.7.2"
 datastore = "1.1.7"
+glance = "1.2.0"
 navigation = "2.9.3"
 composeBom = "2025.08.00"
 coreKtx = "1.16.0"
@@ -41,6 +42,8 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junitJupiter" }

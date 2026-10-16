@@ -24,6 +24,7 @@ object Log {
         Perm("Perm"),
         UI("UI"),
         Stats("Stats"),
+        Widget("Widget"),
     }
 
     @Volatile

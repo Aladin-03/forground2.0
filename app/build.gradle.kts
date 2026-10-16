@@ -32,6 +32,8 @@ android {
             buildConfigField("long", "ALLOWED_WINDOW_MS", "60_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
             buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
+            buildConfigField("long", "WIDGET_REFRESH_INTERVAL_MS", "300_000L")
+            buildConfigField("long", "WIDGET_MIN_REFRESH_INTERVAL_MS", "60_000L")
             buildConfigField("boolean", "LOGGING_ENABLED", "true")
         }
         release {
@@ -45,6 +47,8 @@ android {
             buildConfigField("long", "ALLOWED_WINDOW_MS", "600_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
             buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
+            buildConfigField("long", "WIDGET_REFRESH_INTERVAL_MS", "300_000L")
+            buildConfigField("long", "WIDGET_MIN_REFRESH_INTERVAL_MS", "60_000L")
             buildConfigField("boolean", "LOGGING_ENABLED", "false")
         }
     }
@@ -122,6 +126,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(platform(libs.junit.bom))

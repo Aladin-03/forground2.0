@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 
-private val LightColors =
+internal val LightColors =
     lightColorScheme(
         primary = Palette.Sage40,
         onPrimary = Palette.Ink99,
@@ -26,7 +26,7 @@ private val LightColors =
         error = Palette.Error40,
     )
 
-private val DarkColors =
+internal val DarkColors =
     darkColorScheme(
         primary = Palette.Sage80,
         onPrimary = Palette.Sage20,

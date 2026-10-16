@@ -13,6 +13,10 @@ data class Timing(
     val pollIntervalMillis: Long,
     /** How often the running service rechecks that Usage access and the overlay permission are still granted. */
     val permissionCheckIntervalMillis: Long,
+    /** How often the service refreshes the home-screen widgets while the screen is on and unlocked. */
+    val widgetRefreshIntervalMillis: Long,
+    /** A widget never refreshes more often than this. */
+    val widgetMinRefreshIntervalMillis: Long,
 ) {
     companion object {
         fun fromBuildConfig(): Timing =
@@ -21,6 +25,8 @@ data class Timing(
                 allowedWindowMillis = BuildConfig.ALLOWED_WINDOW_MS,
                 pollIntervalMillis = BuildConfig.POLL_INTERVAL_MS,
                 permissionCheckIntervalMillis = BuildConfig.PERMISSION_CHECK_INTERVAL_MS,
+                widgetRefreshIntervalMillis = BuildConfig.WIDGET_REFRESH_INTERVAL_MS,
+                widgetMinRefreshIntervalMillis = BuildConfig.WIDGET_MIN_REFRESH_INTERVAL_MS,
             )
     }
 }

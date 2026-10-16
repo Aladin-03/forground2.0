@@ -14,6 +14,8 @@ import com.aladin.foreground2.core.permissions.PermissionChecker
 import com.aladin.foreground2.core.permissions.missingRequired
 import com.aladin.foreground2.service.overlay.MediaPauser
 import com.aladin.foreground2.service.overlay.OverlayEffects
+import com.aladin.foreground2.widget.WidgetRefreshTriggers
+import com.aladin.foreground2.widget.WidgetRefresher
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +44,8 @@ import javax.inject.Inject
  *
  * START_STICKY, so the system recreates it after killing the process; [BootReceiver] starts it after a reboot. Every
  * start rereads the locks from Room. While running it rechecks the required permissions and posts an alert if one is
- * revoked (detection or overlays silently stop working otherwise), clearing it once they are back.
+ * revoked (detection or overlays silently stop working otherwise), clearing it once they are back. It also drives
+ * the home-screen widget refreshes ([WidgetRefreshTriggers]): on unlock and periodically while unlocked.
  */
 @AndroidEntryPoint
 class DetectionService : Service() {
@@ -67,6 +70,10 @@ class DetectionService : Service() {
     @Inject lateinit var notifications: DetectionNotifications
 
     @Inject lateinit var status: DetectionStatus
+
+    @Inject lateinit var widgetTriggers: WidgetRefreshTriggers
+
+    @Inject lateinit var widgetRefresher: WidgetRefresher
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -93,6 +100,7 @@ class DetectionService : Service() {
             Log.i(Log.Area.Detect) { "service started (restart=${intent == null})" }
             job = scope.launch { run() }
             scope.launch { watchPermissions() }
+            scope.launch { widgetTriggers.triggers(screenState.unlocked).collect { widgetRefresher.refresh(it) } }
         }
         return START_STICKY
     }

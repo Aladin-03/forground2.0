@@ -1,6 +1,11 @@
 package com.aladin.foreground2
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,8 +23,17 @@ import com.aladin.foreground2.feature.stats.ui.StatsScreen
 fun AppNavHost(
     startDestination: Any,
     modifier: Modifier = Modifier,
+    /** Opens Stats over the start destination once (saved, so it isn't repeated after rotation). */
+    openStats: Boolean = false,
 ) {
     val navController = rememberNavController()
+    var statsPending by rememberSaveable { mutableStateOf(openStats) }
+    LaunchedEffect(statsPending) {
+        if (statsPending) {
+            navController.navigate(StatsRoute)
+            statsPending = false
+        }
+    }
     NavHost(navController = navController, startDestination = startDestination, modifier = modifier) {
         composable<OnboardingRoute> {
             OnboardingScreen(

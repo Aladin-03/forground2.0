@@ -28,6 +28,8 @@ private val DEBUG =
         allowedWindowMillis = 60_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
+        widgetRefreshIntervalMillis = 300_000L,
+        widgetMinRefreshIntervalMillis = 60_000L,
     )
 
 /** Release timings (breath 60 s, window 10 min). */
@@ -37,6 +39,8 @@ private val RELEASE =
         allowedWindowMillis = 600_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
+        widgetRefreshIntervalMillis = 300_000L,
+        widgetMinRefreshIntervalMillis = 60_000L,
     )
 
 private const val MINUTE = 60_000L

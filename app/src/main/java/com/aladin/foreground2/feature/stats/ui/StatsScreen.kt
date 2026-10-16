@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,8 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.AppInfo
-import com.aladin.foreground2.core.domain.usage.UsageDuration
 import com.aladin.foreground2.core.ui.AppIcon
+import com.aladin.foreground2.core.ui.formatUsageDuration
 import com.aladin.foreground2.feature.stats.AppTime
 import com.aladin.foreground2.feature.stats.StatsUiState
 import com.aladin.foreground2.feature.stats.StatsViewModel
@@ -156,14 +157,8 @@ private fun AppTimeRow(
     }
 }
 
-/** "3h 7m", "7m" or "<1m". */
 @Composable
-private fun usageDurationText(millis: Long): String =
-    when (val duration = UsageDuration.of(millis)) {
-        is UsageDuration.Hours -> stringResource(R.string.stats_duration_hours, duration.hours, duration.minutes)
-        is UsageDuration.Minutes -> stringResource(R.string.stats_duration_minutes, duration.minutes)
-        UsageDuration.UnderMinute -> stringResource(R.string.stats_duration_under_minute)
-    }
+private fun usageDurationText(millis: Long): String = formatUsageDuration(LocalContext.current, millis)
 
 @Preview(showBackground = true)
 @Composable

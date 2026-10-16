@@ -24,6 +24,8 @@ private val TIMING =
         allowedWindowMillis = 60_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
+        widgetRefreshIntervalMillis = 300_000L,
+        widgetMinRefreshIntervalMillis = 60_000L,
     )
 
 class OverlayEffectsTest {

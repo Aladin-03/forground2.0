@@ -1,5 +1,7 @@
 package com.aladin.foreground2
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,14 +45,27 @@ class MainActivity : ComponentActivity() {
                     ) { "launch -> ${if (missing.isEmpty()) "Home" else "Onboarding missing=$missing"}" }
                     missing.isNotEmpty()
                 }
+            // A widget tap: Stats on top of Home, so Back lands on Home. Ignored while onboarding is needed.
+            val openStats = rememberSaveable { !needsOnboarding && intent.getBooleanExtra(EXTRA_OPEN_STATS, false) }
             ForegroundTheme {
                 Scaffold { innerPadding ->
                     AppNavHost(
                         startDestination = if (needsOnboarding) OnboardingRoute else HomeRoute,
+                        openStats = openStats,
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
         }
+    }
+
+    companion object {
+        private const val EXTRA_OPEN_STATS = "com.aladin.foreground2.OPEN_STATS"
+
+        /** Starts the app afresh on the Stats screen (over Home). Used by the home-screen widgets. */
+        fun openStatsIntent(context: Context): Intent =
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_OPEN_STATS, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     }
 }

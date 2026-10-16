@@ -34,6 +34,13 @@
   <!-- Some use, but less than a minute. -->
   <string name="stats_duration_under_minute">&lt;1m</string>
 
+  <string name="widget_unlocks_name">Unlocks</string>
+  <string name="widget_unlocks_description">How many times you unlocked your phone today.</string>
+  <string name="widget_unlocks_label">Unlocks today</string>
+  <string name="widget_screen_time_name">Screen time</string>
+  <string name="widget_screen_time_description">Today\'s screen time. Make it bigger to see your top three apps.</string>
+  <string name="widget_screen_time_label">Screen time today</string>
+
   <string name="onboarding_title">Set up Foreground</string>
   <string name="onboarding_intro">Foreground needs a few permissions to notice when you open a watched app and pause it. Tap Grant on each one, switch it on, then come back here.</string>
   <string name="onboarding_required">Required</string>

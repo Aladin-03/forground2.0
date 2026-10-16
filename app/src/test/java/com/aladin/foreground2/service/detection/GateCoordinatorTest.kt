@@ -36,6 +36,8 @@ private val TIMING =
         allowedWindowMillis = 60_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
+        widgetRefreshIntervalMillis = 300_000L,
+        widgetMinRefreshIntervalMillis = 60_000L,
     )
 
 /** In-memory [LockRepository] with the same keep-the-later-end rule as the Room one. */
