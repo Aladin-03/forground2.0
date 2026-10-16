@@ -3,6 +3,8 @@ package com.aladin.foreground2.di
 import com.aladin.foreground2.core.data.apps.LauncherAppSource
 import com.aladin.foreground2.core.data.apps.PackageManagerLauncherAppSource
 import com.aladin.foreground2.core.data.repo.DataStoreSettingsRepository
+import com.aladin.foreground2.core.data.repo.LockRepository
+import com.aladin.foreground2.core.data.repo.RoomLockRepository
 import com.aladin.foreground2.core.data.repo.RoomWatchedAppsRepository
 import com.aladin.foreground2.core.data.repo.SettingsRepository
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
@@ -19,6 +21,9 @@ interface RepoModule {
 
     @Binds
     fun bindSettingsRepository(impl: DataStoreSettingsRepository): SettingsRepository
+
+    @Binds
+    fun bindLockRepository(impl: RoomLockRepository): LockRepository
 
     @Binds
     fun bindLauncherAppSource(impl: PackageManagerLauncherAppSource): LauncherAppSource

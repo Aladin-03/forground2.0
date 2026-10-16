@@ -7,5 +7,5 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "locks")
 data class LockEntity(
     @PrimaryKey val packageName: String,
-    val endsAtMillis: Long,
+    val unlockAtMillis: Long,
 )

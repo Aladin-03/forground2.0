@@ -94,7 +94,8 @@ class DetectionService : Service() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun run() {
-        // Load the watched list before the first poll so an app already in front is recognised.
+        // Load locks and the watched list before the first poll so an app already in front is recognised.
+        coordinator.loadLocks()
         val watched = watchedApps.observeWatched().stateIn(scope)
         coordinator.handle(GateInput.WatchedChanged(watched.value))
         val polling =

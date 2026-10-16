@@ -41,8 +41,21 @@
   <string name="prompt_yes">Yes</string>
   <string name="prompt_no">No</string>
 
-  <string name="duration_placeholder">Duration picker comes next</string>
-  <string name="duration_placeholder_close">Close</string>
+  <!-- %1$s is the app's label. -->
+  <string name="duration_title">Lock %1$s for how long?</string>
+  <string name="duration_days">days</string>
+  <string name="duration_hours">hours</string>
+  <string name="duration_minutes">min</string>
+  <!-- %1$s is a date and time, e.g. Fri 17 Oct, 14:30. -->
+  <string name="duration_unlocks_at">Unlocks at %1$s</string>
+  <string name="duration_pick_hint">Pick how long to lock it</string>
+  <string name="duration_final">Once started, a lock can\'t be cancelled or shortened.</string>
+  <string name="duration_start">Start</string>
+
+  <!-- %1$s is the app's label. -->
+  <string name="locked_placeholder_title">%1$s is locked</string>
+  <!-- %1$s is a date and time, e.g. Fri 17 Oct, 14:30. -->
+  <string name="locked_placeholder_until">Unlocks at %1$s</string>
 
   <string name="detection_channel_name">Watching apps</string>
   <string name="detection_notification_title">Foreground is on</string>

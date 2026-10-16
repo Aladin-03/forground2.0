@@ -75,13 +75,25 @@ class OverlayEffectsTest {
         }
 
     @Test
-    fun `Yes replaces the prompt with the duration placeholder, which leaving removes`() =
+    fun `Yes replaces the prompt with the duration picker, which leaving removes`() =
         runTest {
             effects.apply(update(YOUTUBE, GateEffect.ShowPrompt))
             effects.apply(update(YOUTUBE, GateEffect.ShowDurationPicker))
             effects.apply(update(YOUTUBE, GateEffect.HideOverlay))
             assertEquals(
-                listOf("show prompt $YOUTUBE", "show duration placeholder $YOUTUBE", "hide"),
+                listOf("show prompt $YOUTUBE", "show duration picker $YOUTUBE", "hide"),
+                host.calls,
+            )
+        }
+
+    @Test
+    fun `Start's lock replaces the picker with the lock screen and PersistLock shows nothing`() =
+        runTest {
+            val until = START + 60_000L
+            effects.apply(update(YOUTUBE, GateEffect.ShowDurationPicker))
+            effects.apply(update(YOUTUBE, GateEffect.PersistLock(until), GateEffect.ShowLockScreen(until)))
+            assertEquals(
+                listOf("show duration picker $YOUTUBE", "show locked placeholder $YOUTUBE until=$until"),
                 host.calls,
             )
         }

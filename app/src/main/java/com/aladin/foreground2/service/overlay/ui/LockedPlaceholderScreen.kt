@@ -5,22 +5,38 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.aladin.foreground2.R
 import com.aladin.foreground2.core.designsystem.ForegroundTheme
+import com.aladin.foreground2.service.overlay.formatUnlockTime
 
-/** Stand-in for the rule 6 duration picker until it is built. [onClose] just removes the overlay. */
+/**
+ * Stand-in for the rule 7 lock screen until it is built: the app's label and when it unlocks ([until], epoch ms).
+ * No buttons; Home leaves.
+ */
 @Composable
-fun DurationPlaceholderScreen(
-    onClose: () -> Unit,
+fun LockedPlaceholderScreen(
+    label: String,
+    until: Long,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    LockedPlaceholderContent(label = label, unlockAt = remember(until) { formatUnlockTime(context, until) }, modifier)
+}
+
+@Composable
+private fun LockedPlaceholderContent(
+    label: String,
+    unlockAt: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -29,17 +45,22 @@ fun DurationPlaceholderScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.duration_placeholder),
-            style = MaterialTheme.typography.headlineSmall,
+            text = stringResource(R.string.locked_placeholder_title, label),
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = onClose) { Text(stringResource(R.string.duration_placeholder_close)) }
+        Text(
+            text = stringResource(R.string.locked_placeholder_until, unlockAt),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
 @Preview
 @Composable
-private fun DurationPlaceholderScreenPreview() {
-    ForegroundTheme { DurationPlaceholderScreen(onClose = {}) }
+private fun LockedPlaceholderContentPreview() {
+    ForegroundTheme { LockedPlaceholderContent(label = "YouTube", unlockAt = "Fri 17 Oct, 14:30") }
 }

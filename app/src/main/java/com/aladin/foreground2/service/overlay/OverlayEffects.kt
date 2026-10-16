@@ -9,7 +9,8 @@ import com.aladin.foreground2.core.logging.Log
 import com.aladin.foreground2.service.detection.GateInput
 import com.aladin.foreground2.service.detection.GateUpdate
 import com.aladin.foreground2.service.overlay.ui.BreathScreen
-import com.aladin.foreground2.service.overlay.ui.DurationPlaceholderScreen
+import com.aladin.foreground2.service.overlay.ui.DurationPickerScreen
+import com.aladin.foreground2.service.overlay.ui.LockedPlaceholderScreen
 import com.aladin.foreground2.service.overlay.ui.PromptScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -36,7 +37,10 @@ class OverlayEffects
         private val events = Channel<GateInput>(Channel.UNLIMITED)
         private var shownFor: String? = null
 
-        /** Overlay events (breath finished, prompt answered), to be fed to the coordinator with everything else. */
+        /**
+         * Overlay events (breath finished, prompt answered, lock started), to be fed to the coordinator with
+         * everything else.
+         */
         val inputs: Flow<GateInput> = events.receiveAsFlow()
 
         suspend fun apply(update: GateUpdate) =
@@ -59,9 +63,10 @@ class OverlayEffects
                 GateEffect.ShowBreath -> showBreath(pkg, update.to)
                 GateEffect.HideOverlay -> hide(pkg)
                 GateEffect.ShowPrompt -> showPrompt(pkg, update.label)
-                GateEffect.ShowDurationPicker -> showDurationPlaceholder(pkg)
-                is GateEffect.ShowLockScreen, is GateEffect.PersistLock ->
-                    Log.w(Log.Area.Overlay) { "$effect for $pkg not implemented yet" }
+                GateEffect.ShowDurationPicker -> showDurationPicker(pkg, update.label)
+                is GateEffect.ShowLockScreen -> showLockedPlaceholder(pkg, update.label, effect.until)
+                // Written by the coordinator before the update reaches here.
+                is GateEffect.PersistLock -> Unit
             }
         }
 
@@ -100,14 +105,32 @@ class OverlayEffects
             }
         }
 
-        /**
-         * Placeholder until the duration picker exists. Close only removes the overlay: the gate stays in
-         * PickingDuration until the user leaves the app, which returns it to Idle.
-         */
-        private fun showDurationPlaceholder(pkg: String) {
+        /** Start locks until now + the picked duration; a repeated tap is ignored by the gate (already Locked). */
+        private fun showDurationPicker(
+            pkg: String,
+            label: String,
+        ) {
             shownFor = pkg
-            host.show("duration placeholder $pkg") {
-                DurationPlaceholderScreen(onClose = { hide(pkg) })
+            host.show("duration picker $pkg") {
+                DurationPickerScreen(
+                    label = label,
+                    clock = clock,
+                    onStart = { duration ->
+                        events.trySend(GateInput.LockStarted(pkg, clock.nowMillis() + duration.millis))
+                    },
+                )
+            }
+        }
+
+        /** Placeholder until the rule 7 lock screen exists. */
+        private fun showLockedPlaceholder(
+            pkg: String,
+            label: String,
+            until: Long,
+        ) {
+            shownFor = pkg
+            host.show("locked placeholder $pkg until=$until") {
+                LockedPlaceholderScreen(label = label, until = until)
             }
         }
 

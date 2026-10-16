@@ -1,6 +1,7 @@
 package com.aladin.foreground2.service.detection
 
 import com.aladin.foreground2.core.config.Timing
+import com.aladin.foreground2.core.data.repo.LockRepository
 import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.domain.gate.GateEffect
@@ -42,6 +43,12 @@ sealed interface GateInput {
     data class AnsweredYes(
         val packageName: String,
     ) : GateInput
+
+    /** The user tapped Start on [packageName]'s duration picker, locking it until [until]. */
+    data class LockStarted(
+        val packageName: String,
+        val until: Long,
+    ) : GateInput
 }
 
 /**
@@ -58,8 +65,9 @@ data class GateUpdate(
 
 /**
  * Holds every watched app's gate state in memory and turns front-app changes into Entered/Left, poll ticks into
- * Tick for the watched app in front, and overlay events into the matching gate events. Not thread-safe: call
- * [handle] from one coroutine.
+ * Tick for the watched app in front, and overlay events into the matching gate events. Locks are the exception to
+ * "in memory": [loadLocks] reads the active ones from [LockRepository] when the service starts, and a PersistLock
+ * effect is written back before [handle] returns. Not thread-safe: call [loadLocks] and [handle] from one coroutine.
  */
 @Singleton
 class GateCoordinator
@@ -67,14 +75,27 @@ class GateCoordinator
     constructor(
         private val timing: Timing,
         private val clock: Clock,
+        private val locks: LockRepository,
     ) {
         private var watched: Map<String, AppInfo> = emptyMap()
         private val states = mutableMapOf<String, GateState>()
         private var front: String? = null
 
-        fun stateOf(packageName: String): GateState = states[packageName] ?: GateState.Idle
+        /** Unlock time per package, mirroring the repository. Survives an app being unwatched and rewatched. */
+        private val lockedUntil = mutableMapOf<String, Long>()
 
-        fun handle(input: GateInput): List<GateUpdate> =
+        /** An app with no gate state yet (just loaded, or rewatched) starts Locked if it has a lock, else Idle. */
+        fun stateOf(packageName: String): GateState =
+            states[packageName] ?: lockedUntil[packageName]?.let(GateState::Locked) ?: GateState.Idle
+
+        /** Loads the active locks so a restarted service keeps enforcing them (rule 9). Call before [handle]. */
+        suspend fun loadLocks() {
+            val active = locks.activeLocks()
+            lockedUntil.putAll(active)
+            Log.i(Log.Area.Gate) { "loaded ${active.size} active lock(s): $active" }
+        }
+
+        suspend fun handle(input: GateInput): List<GateUpdate> =
             when (input) {
                 is GateInput.WatchedChanged -> onWatchedChanged(input.apps)
                 is GateInput.FrontChanged -> onFrontChanged(input.change)
@@ -85,15 +106,16 @@ class GateCoordinator
                 is GateInput.BreathFinished -> sendIfWatched(input.packageName, GateEvent.BreathFinished(input.at))
                 is GateInput.AnsweredNo -> sendIfWatched(input.packageName, GateEvent.AnsweredNo(input.at))
                 is GateInput.AnsweredYes -> sendIfWatched(input.packageName, GateEvent.AnsweredYes)
+                is GateInput.LockStarted -> sendIfWatched(input.packageName, GateEvent.LockStarted(input.until))
             }
 
         /** Overlay events can arrive after the app was unwatched; those are dropped. */
-        private fun sendIfWatched(
+        private suspend fun sendIfWatched(
             packageName: String,
             event: GateEvent,
         ): List<GateUpdate> = listOfNotNull(packageName.takeIf { it in watched }?.let { send(it, event) })
 
-        private fun onFrontChanged(change: FrontAppChanged): List<GateUpdate> {
+        private suspend fun onFrontChanged(change: FrontAppChanged): List<GateUpdate> {
             val previous = front
             front = change.packageName
             return listOfNotNull(
@@ -103,7 +125,7 @@ class GateCoordinator
         }
 
         /** Unwatching an app mid-gate acts like leaving it (hides any overlay), then forgets it. */
-        private fun onWatchedChanged(apps: List<AppInfo>): List<GateUpdate> {
+        private suspend fun onWatchedChanged(apps: List<AppInfo>): List<GateUpdate> {
             val next = apps.associateBy { it.packageName }
             val removed = watched.keys - next.keys
             val updates = removed.mapNotNull { send(it, GateEvent.Left(clock.nowMillis())) }
@@ -115,13 +137,23 @@ class GateCoordinator
             return updates
         }
 
-        private fun send(
+        private suspend fun send(
             packageName: String,
             event: GateEvent,
         ): GateUpdate? {
             val from = stateOf(packageName)
-            val transition = GateMachine.reduce(from, event, timing)
+            var transition = GateMachine.reduce(from, event, timing)
             if (transition.state == from && transition.effects.isEmpty()) return null
+            transition.effects.filterIsInstance<GateEffect.PersistLock>().singleOrNull()?.let { persist ->
+                val stored = locks.lock(packageName, persist.until)
+                lockedUntil[packageName] = stored
+                // A lock can't be shortened: if a later one already existed, lock until that instead.
+                if (stored !=
+                    persist.until
+                ) {
+                    transition = GateMachine.reduce(from, GateEvent.LockStarted(stored), timing)
+                }
+            }
             states[packageName] = transition.state
             val label = watched[packageName]?.label ?: packageName
             Log.i(Log.Area.Gate) {
