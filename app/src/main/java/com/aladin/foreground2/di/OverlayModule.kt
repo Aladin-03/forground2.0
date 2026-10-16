@@ -6,7 +6,9 @@ import com.aladin.foreground2.service.overlay.IntentHomeLauncher
 import com.aladin.foreground2.service.overlay.KeyEventMediaPauser
 import com.aladin.foreground2.service.overlay.MediaControls
 import com.aladin.foreground2.service.overlay.MediaPauser
+import com.aladin.foreground2.service.overlay.MuteRecord
 import com.aladin.foreground2.service.overlay.OverlayHost
+import com.aladin.foreground2.service.overlay.SettingsMuteRecord
 import com.aladin.foreground2.service.overlay.WindowOverlayHost
 import dagger.Binds
 import dagger.Module
@@ -27,4 +29,7 @@ interface OverlayModule {
 
     @Binds
     fun bindMediaControls(impl: AudioManagerMediaControls): MediaControls
+
+    @Binds
+    fun bindMuteRecord(impl: SettingsMuteRecord): MuteRecord
 }

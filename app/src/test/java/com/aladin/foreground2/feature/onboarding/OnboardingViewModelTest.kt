@@ -25,6 +25,10 @@ private class FakeSettingsRepository : SettingsRepository {
     override suspend fun setOnboardingComplete() {
         onboardingComplete.value = true
     }
+
+    override suspend fun mediaMutedByApp() = false
+
+    override suspend fun setMediaMutedByApp(muted: Boolean) = Unit
 }
 
 private class FakeDetectionServiceController : DetectionServiceController {

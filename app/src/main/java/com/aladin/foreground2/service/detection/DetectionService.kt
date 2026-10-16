@@ -12,6 +12,7 @@ import com.aladin.foreground2.core.logging.Log
 import com.aladin.foreground2.core.permissions.Permission
 import com.aladin.foreground2.core.permissions.PermissionChecker
 import com.aladin.foreground2.core.permissions.missingRequired
+import com.aladin.foreground2.service.overlay.MediaPauser
 import com.aladin.foreground2.service.overlay.OverlayEffects
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -53,6 +55,8 @@ class DetectionService : Service() {
     @Inject lateinit var watchedApps: WatchedAppsRepository
 
     @Inject lateinit var overlays: OverlayEffects
+
+    @Inject lateinit var mediaPauser: MediaPauser
 
     @Inject lateinit var clock: Clock
 
@@ -108,6 +112,7 @@ class DetectionService : Service() {
         // Locks are read from Room on every start. Load them and the watched list before the first poll, so an app
         // already in front is recognised (as a fresh entry, since the detector starts over too).
         detector.reset()
+        withContext(Dispatchers.Main) { mediaPauser.restoreAfterCrash() }
         coordinator.loadLocks()
         val watched = watchedApps.observeWatched().stateIn(scope)
         coordinator.handle(GateInput.WatchedChanged(watched.value))
