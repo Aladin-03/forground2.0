@@ -35,3 +35,7 @@
     public static <1> INSTANCE;
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# Navigation type-safe routes: an enum route argument (e.g. StatsRoute.tab: StatsTab) is resolved at runtime with
+# Class.forName(<serial name>), which is the enum's original fully qualified name. Keep app enum class names.
+-keepnames class com.aladin.foreground2.** extends java.lang.Enum
