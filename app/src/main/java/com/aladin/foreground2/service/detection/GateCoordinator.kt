@@ -61,6 +61,11 @@ sealed interface GateInput {
         val packageName: String,
         val until: Long,
     ) : GateInput
+
+    /** The locks table changed: package name -> unlock time for every stored lock (Home can add one). */
+    data class LocksChanged(
+        val locks: Map<String, Long>,
+    ) : GateInput
 }
 
 /**
@@ -79,7 +84,8 @@ data class GateUpdate(
  * Holds every watched app's gate state in memory and turns front-app changes into Entered/Left, poll ticks into
  * Tick for the watched app in front (and for any app whose lock has ended), and overlay events into the matching gate
  * events. Locks are the exception to "in memory": [loadLocks] reads the active ones from [LockRepository] when the
- * service starts, and PersistLock / DeleteLock effects are written back before [handle] returns.
+ * service starts, PersistLock / DeleteLock effects are written back before [handle] returns, and
+ * [GateInput.LocksChanged] (the locks table as a Flow) picks up locks stored elsewhere, i.e. from Home.
  * Not thread-safe: call [loadLocks] and [handle] from one coroutine.
  */
 @Singleton
@@ -130,7 +136,27 @@ class GateCoordinator
                 is GateInput.LockNowRequested -> sendIfWatched(input.packageName, GateEvent.LockNowRequested(input.at))
                 is GateInput.PickerCancelled -> sendIfWatched(input.packageName, GateEvent.PickerCancelled(input.at))
                 is GateInput.LockStarted -> sendIfWatched(input.packageName, GateEvent.LockStarted(input.until))
+                is GateInput.LocksChanged -> onLocksChanged(input.locks)
             }
+
+        /**
+         * Picks up locks that are new or later than the ones known here. That is a lock started from Home; the
+         * coordinator's own PersistLock echoes back unchanged and is ignored, as are deleted rows (ended locks are
+         * handled on [onTick]) and rows that ended but aren't deleted yet. An unwatched app's lock is only remembered,
+         * for when it is rewatched.
+         */
+        private suspend fun onLocksChanged(stored: Map<String, Long>): List<GateUpdate> {
+            val now = clock.nowMillis()
+            val added = stored.filter { (pkg, until) -> until > now && until > (lockedUntil[pkg] ?: Long.MIN_VALUE) }
+            return added.mapNotNull { (pkg, until) ->
+                Log.i(Log.Area.Gate) {
+                    "lock received from repository pkg=$pkg until=$until (was ${lockedUntil[pkg]})" +
+                        if (pkg in watched) "" else ", not watched"
+                }
+                lockedUntil[pkg] = until
+                if (pkg in watched) send(pkg, GateEvent.LockAdded(until)) else null
+            }
+        }
 
         /** Overlay events can arrive after the app was unwatched; those are dropped. */
         private suspend fun sendIfWatched(

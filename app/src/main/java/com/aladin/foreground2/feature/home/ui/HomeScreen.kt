@@ -1,5 +1,6 @@
 package com.aladin.foreground2.feature.home.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,12 +51,22 @@ import com.aladin.foreground2.feature.home.WatchedApp
 private enum class Section { Locked, Watched }
 
 /** Screens Home links to. */
-private enum class HomeLink { Picker, Stats }
+private sealed interface HomeLink {
+    data object Picker : HomeLink
+
+    data object Stats : HomeLink
+
+    /** Lock a watched app, or see its running lock. */
+    data class App(
+        val packageName: String,
+    ) : HomeLink
+}
 
 @Composable
 fun HomeScreen(
     onOpenPicker: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenApp: (packageName: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -75,6 +86,7 @@ fun HomeScreen(
             when (link) {
                 HomeLink.Picker -> onOpenPicker()
                 HomeLink.Stats -> onOpenStats()
+                is HomeLink.App -> onOpenApp(link.packageName)
             }
         },
         loadIcon = viewModel::loadIcon,
@@ -128,7 +140,12 @@ private fun HomeContent(
             item { EmptyText(stringResource(R.string.home_watched_empty)) }
         } else {
             items(state.watched, key = { Section.Watched to it.app.packageName }) { watched ->
-                WatchedRow(watched = watched, loadIcon = loadIcon, modifier = Modifier.animateItem())
+                WatchedRow(
+                    watched = watched,
+                    loadIcon = loadIcon,
+                    onClick = { onOpen(HomeLink.App(watched.app.packageName)) },
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }
@@ -237,15 +254,16 @@ private fun LockRow(
     }
 }
 
-/** A watched app, marked locked or breath-on-open. */
+/** A watched app, marked locked or breath-on-open. Tapping it opens "Lock <app>" (or its running lock). */
 @Composable
 private fun WatchedRow(
     watched: WatchedApp,
     loadIcon: suspend (String) -> ImageBitmap?,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(ForegroundTheme.spacing.md),
     ) {

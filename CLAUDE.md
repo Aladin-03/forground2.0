@@ -18,10 +18,10 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 | `core/data/apps/` | Installed-app sources via PackageManager (launcher app list, icons) |
 | `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs |
 | `core/permissions/` | Permission checks, their display names, and Settings deep-link intents |
-| `core/ui/` | Compose helpers shared by app screens and overlays (app icon, lock countdown text, unlock-time format) |
+| `core/ui/` | Compose helpers shared by app screens and overlays (app icon, duration picker and its number wheel, lock countdown text, unlock-time format) |
 | `core/logging/` | `Log.kt`, the only logger |
 | `core/config/` | `Timing.kt` (breath, window, poll and permission-check intervals from BuildConfig) |
-| `feature/{onboarding,picker,home,stats}/` | ViewModel + route; Composables in `ui/` |
+| `feature/{onboarding,picker,home,lock,stats}/` | ViewModel + route; Composables in `ui/` |
 | `service/detection/` | Foreground service + front-app detection (UsageStatsManager) |
 | `service/overlay/` | Overlay window host + overlay screens |
 | `widget/` | Home-screen widgets (Glance): unlocks and screen time, their receivers, throttled refresh |

@@ -40,7 +40,8 @@ sealed interface GateState {
 /**
  * Inputs to the gate. The service sends [Entered]/[Left] when the app becomes / stops being the front app, and
  * [Tick] on each poll while the app is in front, and to any app whose lock has ended. The overlay sends
- * [BreathFinished], [LockNowRequested], the answers and the picker's Start / cancel.
+ * [BreathFinished], [LockNowRequested], the answers and the picker's Start / cancel. [LockAdded] comes from the
+ * locks table.
  */
 sealed interface GateEvent {
     data class Entered(
@@ -72,6 +73,11 @@ sealed interface GateEvent {
     ) : GateEvent
 
     data class LockStarted(
+        val until: Long,
+    ) : GateEvent
+
+    /** A lock until [until] was stored outside the overlay (from the app's Home screen). */
+    data class LockAdded(
         val until: Long,
     ) : GateEvent
 

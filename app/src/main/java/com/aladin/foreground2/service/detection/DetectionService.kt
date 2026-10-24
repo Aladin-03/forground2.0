@@ -6,6 +6,7 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import com.aladin.foreground2.core.config.Timing
+import com.aladin.foreground2.core.data.repo.LockRepository
 import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
 import com.aladin.foreground2.core.data.usage.HistoryTrigger
 import com.aladin.foreground2.core.data.usage.UsageHistory
@@ -60,6 +61,8 @@ class DetectionService : Service() {
     @Inject lateinit var screenState: ScreenStateSource
 
     @Inject lateinit var watchedApps: WatchedAppsRepository
+
+    @Inject lateinit var locks: LockRepository
 
     @Inject lateinit var overlays: OverlayEffects
 
@@ -141,8 +144,14 @@ class DetectionService : Service() {
                 if (unlocked) merge(detector.changes().map(GateInput::FrontChanged), ticks()) else emptyFlow()
             }
         // One collector, so the coordinator sees inputs strictly one at a time and effects run in order.
-        // Overlay events keep flowing while the screen is off, so a breath can still finish then.
-        merge(watched.drop(1).map(GateInput::WatchedChanged), polling, overlays.inputs).collect { input ->
+        // Overlay events keep flowing while the screen is off, so a breath can still finish then. The locks table is
+        // observed too, so a lock started from Home is enforced straight away.
+        merge(
+            watched.drop(1).map(GateInput::WatchedChanged),
+            locks.observeLocks().map(GateInput::LocksChanged),
+            polling,
+            overlays.inputs,
+        ).collect { input ->
             coordinator.handle(input).forEach { overlays.apply(it) }
             // The first poll after local midnight saves the day that just ended.
             if (input is GateInput.Tick && dayWatcher.dayChanged(input.at)) {

@@ -34,6 +34,7 @@ object GateMachine {
             is GateEvent.LockNowRequested -> onLockNowRequested(state, event.now, timing)
             is GateEvent.PickerCancelled -> onPickerCancelled(state, event.now, timing)
             is GateEvent.LockStarted -> onLockStarted(state, event.until)
+            is GateEvent.LockAdded -> onLockAdded(state, event.until)
             is GateEvent.Tick -> onTick(state, event.now)
         }
 
@@ -157,6 +158,21 @@ object GateMachine {
             else -> Transition(state)
         }
 }
+
+/**
+ * Rule 6: a lock started from Home wins over whatever the gate was doing, an allowed window included, so the next
+ * entry shows the lock screen. An overlay still up (only if the app is in front) becomes the lock screen. A lock
+ * never gets shorter: one ending no later than the current lock is ignored. Already persisted, so no PersistLock.
+ */
+private fun onLockAdded(
+    state: GateState,
+    until: Long,
+): Transition =
+    when (state) {
+        is Locked -> if (until > state.until) Transition(Locked(until)) else Transition(state)
+        Idle, is Allowed -> Transition(Locked(until))
+        is Breathing, Prompting, is PickingDuration -> Transition(Locked(until), listOf(ShowLockScreen(until)))
+    }
 
 private fun startBreath(now: Long) = Transition(Breathing(startedAt = now), listOf(ShowBreath))
 

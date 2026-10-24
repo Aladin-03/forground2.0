@@ -32,7 +32,9 @@ val keystoreProblem: String? =
             "Release signing: keystore.properties has no value for " +
                 keystoreKeys.filter { keystoreProperties.getProperty(it).isNullOrBlank() }.joinToString() + "."
         !rootProject.file(keystoreProperties.getProperty("storeFile")).isFile ->
-            "Release signing: storeFile ${rootProject.file(keystoreProperties.getProperty("storeFile")).path} not found."
+            "Release signing: storeFile ${rootProject.file(
+                keystoreProperties.getProperty("storeFile"),
+            ).path} not found."
         else -> null
     }
 
@@ -44,8 +46,8 @@ android {
         applicationId = "com.aladin.foreground2"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     signingConfigs {

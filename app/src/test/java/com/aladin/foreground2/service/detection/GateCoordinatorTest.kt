@@ -28,6 +28,7 @@ private const val YOUTUBE = "com.google.android.youtube"
 private const val INSTAGRAM = "com.instagram.android"
 private const val LAUNCHER = "com.transsion.hilauncher"
 private const val WHATSAPP = "com.whatsapp"
+private const val FOREGROUND = "com.aladin.foreground2"
 private const val START = 1_700_000_000_000L
 private const val HOUR = 3_600_000L
 private val TIMING =
@@ -428,5 +429,79 @@ class GateCoordinatorTest {
                 GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
             )
             assertEquals(Locked(until), coordinator.stateOf(YOUTUBE))
+        }
+
+    @Test
+    fun `a lock from Home during an allowed window wins, so the next entry shows the lock screen`() =
+        runTest {
+            prompt(YOUTUBE)
+            coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+            val allowedUntil = clock.now + TIMING.allowedWindowMillis
+            front(FOREGROUND)
+            val until = clock.now + HOUR
+            locks.lock(YOUTUBE, until)
+            assertEquals(
+                listOf(GateUpdate(YOUTUBE, Idle, Locked(until), emptyList(), "YouTube")),
+                coordinator.handle(GateInput.LocksChanged(locks.stored.toMap())),
+            )
+            clock.advanceBy(1_000)
+            assertEquals(
+                listOf(GateUpdate(YOUTUBE, Locked(until), Locked(until), listOf(ShowLockScreen(until)), "YouTube")),
+                front(YOUTUBE),
+            )
+            // Still locked after the old window would have ended.
+            clock.advanceBy(allowedUntil - clock.now)
+            assertTrue(tick().isEmpty())
+            assertEquals(Locked(until), coordinator.stateOf(YOUTUBE))
+        }
+
+    @Test
+    fun `a lock from Home while the app is still in an allowed window locks it`() =
+        runTest {
+            prompt(YOUTUBE)
+            coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+            val allowed = coordinator.stateOf(YOUTUBE)
+            val until = clock.now + HOUR
+            assertEquals(
+                listOf(GateUpdate(YOUTUBE, allowed, Locked(until), emptyList(), "YouTube")),
+                coordinator.handle(GateInput.LocksChanged(mapOf(YOUTUBE to until))),
+            )
+        }
+
+    @Test
+    fun `the coordinator's own lock coming back from the table is ignored`() =
+        runTest {
+            picker(YOUTUBE)
+            val until = clock.now + HOUR
+            coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
+            assertTrue(coordinator.handle(GateInput.LocksChanged(locks.stored.toMap())).isEmpty())
+            assertEquals(Locked(until), coordinator.stateOf(YOUTUBE))
+        }
+
+    @Test
+    fun `ended, shorter and deleted rows from the table are ignored`() =
+        runTest {
+            picker(YOUTUBE)
+            val until = clock.now + 2 * HOUR
+            coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
+            assertTrue(
+                coordinator
+                    .handle(GateInput.LocksChanged(mapOf(YOUTUBE to clock.now + HOUR, INSTAGRAM to clock.now - 1)))
+                    .isEmpty(),
+            )
+            assertTrue(coordinator.handle(GateInput.LocksChanged(emptyMap())).isEmpty())
+            assertEquals(Locked(until), coordinator.stateOf(YOUTUBE))
+            assertEquals(Idle, coordinator.stateOf(INSTAGRAM))
+        }
+
+    @Test
+    fun `a lock from Home for an unwatched app is kept for when it is watched`() =
+        runTest {
+            val until = clock.now + HOUR
+            assertTrue(coordinator.handle(GateInput.LocksChanged(mapOf(WHATSAPP to until))).isEmpty())
+            coordinator.handle(
+                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(WHATSAPP, "WhatsApp"))),
+            )
+            assertEquals(Locked(until), coordinator.stateOf(WHATSAPP))
         }
 }

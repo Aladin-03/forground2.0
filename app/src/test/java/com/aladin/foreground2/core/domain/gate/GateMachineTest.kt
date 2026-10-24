@@ -84,6 +84,8 @@ private class GateDriver(
 
     fun startLock(durationMillis: Long) = send(GateEvent.LockStarted(now() + durationMillis))
 
+    fun lockAdded(until: Long) = send(GateEvent.LockAdded(until))
+
     /** Enter, sit through the full breath, and land on the prompt. */
     fun enterAndBreathe() {
         enter()
@@ -104,6 +106,49 @@ private class GateDriver(
 }
 
 class GateMachineTest {
+    @Nested
+    inner class `Rule 6 - a lock started from Home` {
+        @Test
+        fun `locks an idle app without showing anything, and the next entry shows the lock screen`() {
+            val gate = GateDriver()
+            val until = START + DAY
+            assertEquals(emptyList<GateEffect>(), gate.lockAdded(until))
+            assertEquals(Locked(until), gate.state)
+            assertEquals(listOf(ShowLockScreen(until)), gate.enter())
+        }
+
+        @Test
+        fun `wins over an allowed window`() {
+            val gate = GateDriver()
+            gate.enterAndBreathe()
+            gate.answerNo()
+            val until = gate.now() + DAY
+            assertEquals(emptyList<GateEffect>(), gate.lockAdded(until))
+            assertEquals(Locked(until), gate.state)
+            assertEquals(emptyList<GateEffect>(), gate.tickFor(DEBUG.allowedWindowMillis))
+            gate.leave()
+            assertEquals(listOf(ShowLockScreen(until)), gate.enter())
+        }
+
+        @Test
+        fun `replaces an overlay that is up with the lock screen`() {
+            val gate = GateDriver()
+            gate.enter()
+            val until = START + DAY
+            assertEquals(listOf(ShowLockScreen(until)), gate.lockAdded(until))
+            assertEquals(Locked(until), gate.state)
+        }
+
+        @Test
+        fun `extends a shorter lock but never shortens one`() {
+            val gate = GateDriver(initial = Locked(START + DAY))
+            assertEquals(emptyList<GateEffect>(), gate.lockAdded(START + MINUTE))
+            assertEquals(Locked(START + DAY), gate.state)
+            gate.lockAdded(START + 2 * DAY)
+            assertEquals(Locked(START + 2 * DAY), gate.state)
+        }
+    }
+
     @Nested
     inner class `Rule 2 - entry is a breath` {
         @Test

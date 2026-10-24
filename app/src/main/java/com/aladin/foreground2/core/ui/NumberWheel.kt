@@ -1,4 +1,4 @@
-package com.aladin.foreground2.service.overlay.ui
+package com.aladin.foreground2.core.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.SnapPosition

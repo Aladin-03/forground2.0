@@ -13,6 +13,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.aladin.foreground2.feature.home.HomeRoute
 import com.aladin.foreground2.feature.home.ui.HomeScreen
+import com.aladin.foreground2.feature.lock.LockAppRoute
+import com.aladin.foreground2.feature.lock.ui.LockAppScreen
 import com.aladin.foreground2.feature.onboarding.OnboardingRoute
 import com.aladin.foreground2.feature.onboarding.ui.OnboardingScreen
 import com.aladin.foreground2.feature.picker.PickerRoute
@@ -48,8 +50,10 @@ fun AppNavHost(
             HomeScreen(
                 onOpenPicker = { navController.navigate(PickerRoute) },
                 onOpenStats = { navController.navigate(StatsRoute()) },
+                onOpenApp = { navController.navigate(LockAppRoute(it)) },
             )
         }
+        composable<LockAppRoute> { LockAppScreen(onDone = { navController.popBackStack() }) }
         composable<PickerRoute> { PickerScreen() }
         composable<StatsRoute> { entry -> StatsScreen(initialTab = entry.toRoute<StatsRoute>().tab) }
     }
