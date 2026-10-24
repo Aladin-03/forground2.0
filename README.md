@@ -20,6 +20,7 @@ A one-minute breath before every distracting app — and a lock you set yourself
 - [Build from source](#build-from-source)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
+- [License](#license)
 
 ## The problem
 
@@ -190,3 +191,7 @@ A single `app` module, package `com.aladin.foreground2`:
 
 [docs/SPEC.md](docs/SPEC.md) describes every behaviour rule and the technical approach. Each package also has a
 one-line README.
+
+## License
+
+Foreground 2.0 is released under the MIT license. See [LICENSE](LICENSE).
