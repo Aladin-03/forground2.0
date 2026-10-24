@@ -8,7 +8,7 @@ import android.util.Log as AndroidLog
  * Filter on device with `adb logcat -s FG2`. Disabled in release builds; messages are lambdas so they cost
  * nothing when off.
  *
- * Every gate state transition, overlay show/hide, service start/stop and permission change is logged.
+ * Every gate state transition, overlay and usage pill show/hide, service start/stop and permission change is logged.
  */
 object Log {
     const val TAG = "FG2"
@@ -25,6 +25,7 @@ object Log {
         UI("UI"),
         Stats("Stats"),
         Widget("Widget"),
+        Pill("Pill"),
     }
 
     @Volatile

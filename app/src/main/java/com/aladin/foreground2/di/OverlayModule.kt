@@ -9,7 +9,9 @@ import com.aladin.foreground2.service.overlay.MediaPauser
 import com.aladin.foreground2.service.overlay.MuteRecord
 import com.aladin.foreground2.service.overlay.OverlayHost
 import com.aladin.foreground2.service.overlay.SettingsMuteRecord
+import com.aladin.foreground2.service.overlay.UsagePill
 import com.aladin.foreground2.service.overlay.WindowOverlayHost
+import com.aladin.foreground2.service.overlay.WindowUsagePill
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -20,6 +22,9 @@ import dagger.hilt.components.SingletonComponent
 interface OverlayModule {
     @Binds
     fun bindOverlayHost(impl: WindowOverlayHost): OverlayHost
+
+    @Binds
+    fun bindUsagePill(impl: WindowUsagePill): UsagePill
 
     @Binds
     fun bindHomeLauncher(impl: IntentHomeLauncher): HomeLauncher

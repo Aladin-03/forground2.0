@@ -1,1 +1,1 @@
-TYPE_APPLICATION_OVERLAY window host (ComposeView with hand-provided Lifecycle/ViewModelStore/SavedStateRegistry owners) and the breath, prompt, picker (wrapping the shared core/ui picker) and locked overlay screens.
+TYPE_APPLICATION_OVERLAY window host (ComposeView with hand-provided Lifecycle/ViewModelStore/SavedStateRegistry owners) and the breath, prompt, picker (wrapping the shared core/ui picker) and locked overlay screens; plus the separate, untouchable usage pill window shown during an allowed window.

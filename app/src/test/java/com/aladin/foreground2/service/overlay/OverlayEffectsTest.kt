@@ -48,6 +48,25 @@ class OverlayEffectsTest {
         }
     }
 
+    private class FakePill : UsagePill {
+        val calls = mutableListOf<String>()
+
+        override fun show(
+            packageName: String,
+            until: Long,
+        ) {
+            calls += "show $packageName until=$until"
+        }
+
+        override fun hide(packageName: String) {
+            calls += "hide $packageName"
+        }
+
+        override fun hideAll() {
+            calls += "hideAll"
+        }
+    }
+
     private object NoIcons : LauncherAppSource {
         override suspend fun launcherApps(): List<AppInfo> = emptyList()
 
@@ -57,7 +76,8 @@ class OverlayEffectsTest {
     }
 
     private val host = FakeHost()
-    private val effects = OverlayEffects(host, FakeClock(START), TIMING, NoIcons) { host.calls += "home" }
+    private val pill = FakePill()
+    private val effects = OverlayEffects(host, pill, FakeClock(START), TIMING, NoIcons) { host.calls += "home" }
 
     private fun breath(pkg: String) =
         GateUpdate(pkg, GateState.Idle, GateState.Breathing(START), listOf(GateEffect.ShowBreath), pkg)
@@ -142,5 +162,67 @@ class OverlayEffectsTest {
             effects.apply(update(YOUTUBE, GateEffect.HideOverlay))
             effects.apply(breath(INSTAGRAM))
             assertEquals(listOf("show breath $YOUTUBE", "hide", "show breath $INSTAGRAM"), host.calls)
+        }
+
+    @Test
+    fun `No hides the prompt and shows the pill until the window ends`() =
+        runTest {
+            val until = START + TIMING.allowedWindowMillis
+            effects.apply(update(YOUTUBE, GateEffect.ShowPrompt))
+            effects.apply(
+                GateUpdate(YOUTUBE, GateState.Prompting, GateState.Allowed(until), listOf(GateEffect.HideOverlay), ""),
+            )
+            assertEquals(listOf("show prompt $YOUTUBE", "hide"), host.calls)
+            assertEquals(listOf("show $YOUTUBE until=$until"), pill.calls)
+        }
+
+    @Test
+    fun `leaving the allowed app hides the pill`() =
+        runTest {
+            val allowed = GateState.Allowed(START + TIMING.allowedWindowMillis)
+            effects.apply(GateUpdate(YOUTUBE, allowed, GateState.Idle, emptyList(), ""))
+            assertEquals(listOf("hide $YOUTUBE"), pill.calls)
+            assertEquals(emptyList<String>(), host.calls)
+        }
+
+    @Test
+    fun `the window ending hides the pill before the breath shows`() =
+        runTest {
+            val until = START + TIMING.allowedWindowMillis
+            effects.apply(
+                GateUpdate(
+                    YOUTUBE,
+                    GateState.Allowed(until),
+                    GateState.Breathing(until),
+                    listOf(GateEffect.ShowBreath),
+                    "",
+                ),
+            )
+            assertEquals(listOf("hide $YOUTUBE"), pill.calls)
+            assertEquals(listOf("show breath $YOUTUBE"), host.calls)
+        }
+
+    @Test
+    fun `a lock from Home during the window hides the pill`() =
+        runTest {
+            val allowed = GateState.Allowed(START + TIMING.allowedWindowMillis)
+            effects.apply(GateUpdate(YOUTUBE, allowed, GateState.Locked(START + 3_600_000L), emptyList(), ""))
+            assertEquals(listOf("hide $YOUTUBE"), pill.calls)
+        }
+
+    @Test
+    fun `other overlays never touch the pill`() =
+        runTest {
+            effects.apply(breath(YOUTUBE))
+            effects.apply(update(YOUTUBE, GateEffect.ShowPrompt))
+            effects.apply(update(YOUTUBE, GateEffect.HideOverlay))
+            assertEquals(emptyList<String>(), pill.calls)
+        }
+
+    @Test
+    fun `stopping the service removes the pill too`() =
+        runTest {
+            effects.hideAll()
+            assertEquals(listOf("hideAll"), pill.calls)
         }
 }

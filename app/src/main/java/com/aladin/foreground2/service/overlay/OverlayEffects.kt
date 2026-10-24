@@ -23,13 +23,15 @@ import javax.inject.Singleton
 /**
  * Carries out the overlay effects of each [GateUpdate] on [OverlayHost], and turns what the user does on an overlay
  * back into [inputs] for the coordinator. Remembers which app the overlay belongs to, so a HideOverlay for some other
- * app (e.g. an unwatched app that wasn't in front) leaves it alone.
+ * app (e.g. an unwatched app that wasn't in front) leaves it alone. Also shows the [UsagePill] while a gate is
+ * Allowed (rule 10).
  */
 @Singleton
 class OverlayEffects
     @Inject
     constructor(
         private val host: OverlayHost,
+        private val pill: UsagePill,
         private val clock: Clock,
         private val timing: Timing,
         private val launcherApps: LauncherAppSource,
@@ -46,6 +48,7 @@ class OverlayEffects
 
         suspend fun apply(update: GateUpdate) =
             withContext(Dispatchers.Main.immediate) {
+                updatePill(update)
                 update.effects.forEach { apply(update, it) }
             }
 
@@ -53,6 +56,20 @@ class OverlayEffects
         fun hideAll() {
             shownFor = null
             host.hide()
+            pill.hideAll()
+        }
+
+        /**
+         * Rule 10: the pill is up exactly while the gate is Allowed, which only the app in front can be. Every way
+         * out (leaving, the window ending into a breath, a lock from Home, being unwatched) leaves Allowed, so it
+         * never shares the screen with the breath, prompt, picker or lock screen.
+         */
+        private fun updatePill(update: GateUpdate) {
+            val to = update.to
+            when {
+                to is GateState.Allowed -> pill.show(update.packageName, to.until)
+                update.from is GateState.Allowed -> pill.hide(update.packageName)
+            }
         }
 
         private fun apply(

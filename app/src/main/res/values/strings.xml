@@ -127,6 +127,11 @@
   <string name="lock_app_back">Back</string>
   <string name="lock_app_final">A running lock can\'t be cancelled or shortened.</string>
 
+  <!-- Usage pill during an allowed window: %1$s is pill_time_left, %2$s today's use, e.g. "7:42 · 1h 12m". -->
+  <string name="pill_text">%1$s · %2$s</string>
+  <!-- Minutes and seconds until the next breath. -->
+  <string name="pill_time_left">%1$d:%2$02d</string>
+
   <string name="detection_channel_name">Watching apps</string>
   <string name="detection_notification_title">Foreground is on</string>
   <string name="detection_notification_text">Watching for the apps you chose to pause.</string>

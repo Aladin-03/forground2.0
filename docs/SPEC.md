@@ -16,6 +16,7 @@ Personal Android app (sideloaded, single user). Every time the user enters a **w
 7. **Locked.** Entering a locked app skips the breath and shows "Unlocks in Xd Yh Zm" (live countdown) with a single **Go home** button.
 8. **Independent locks.** Each app has its own lock. When it expires, the app goes back to rule 2.
 9. **Persistence.** A lock is stored as its end time (epoch ms). Locks survive reboots and process death. The allowed window is in memory only; losing it just means a fresh breath.
+10. **Usage pill.** While a watched app is in its allowed window (rule 5), a small pill reads "<m:ss> · <usage>", e.g. "7:42 · 1h 12m": the time left until the next breath, and the app's foreground time today ("1h 12m", or "12m" under an hour), both ticking every second. It is meant to catch the eye as a reminder: a solid dark chip with larger text, a light outline and a shadow, at the top right just below the status bar (the gap beside the camera is too small for it), at the same spot in portrait, landscape and fullscreen video. It is always visible (no fading, no colour change near the end) and lets every tap through to the app. It is hidden whenever the app leaves the front and whenever the breath, prompt, picker or lock screen shows; unwatched apps never get one.
 
 ## Daily stats
 
@@ -49,6 +50,7 @@ Accessibility service · clock-tamper protection · broken-lock logging · speci
 
 - **Detection:** a foreground service (type `specialUse`, persistent notification) polls `UsageStatsManager.queryEvents` every ~500 ms and tracks `ACTIVITY_RESUMED` events to know the current front package. A short flash of the app before the overlay covers it is acceptable.
 - **Overlay:** a `WindowManager` window of type `TYPE_APPLICATION_OVERLAY`, full screen, focusable, consuming touches and the back key, hosting a `ComposeView`. The service must provide the `ComposeView` with a `LifecycleOwner`, `ViewModelStoreOwner` and `SavedStateRegistryOwner` by hand.
+- **Usage pill:** its own `TYPE_APPLICATION_OVERLAY` window, separate from the full-screen one: `WRAP_CONTENT`, gravity top-end, not focusable and not touchable, window alpha 0.8 (Android 12+ blocks touches through untrusted overlays more opaque than that). Today's use is read once from the usage log when the pill appears, then counted up locally. Its offsets are constants in `core/config`.
 - **Media:** while any overlay shows, media is paused with media keys and the media stream is muted (some players, like YouTube Shorts, have no media session and can't be paused from outside). On hide the stream is unmuted, but playback is never resumed. A mute the user made is left alone, and a mute left by a run that died mid-overlay is undone on the next service start.
 - **App list:** `PackageManager.queryIntentActivities(ACTION_MAIN + CATEGORY_LAUNCHER)` with a matching `<queries>` manifest entry. No `QUERY_ALL_PACKAGES`.
 - **Storage:** Room for watched apps and locks; DataStore Preferences for flags (e.g. onboarding done).
