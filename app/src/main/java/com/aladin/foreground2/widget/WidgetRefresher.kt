@@ -1,5 +1,7 @@
 package com.aladin.foreground2.widget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.os.PowerManager
 import androidx.glance.GlanceId
@@ -80,11 +82,11 @@ class WidgetRefresher
                 Log.d(Log.Area.Widget) { "skip reason=$reason: screen off" }
                 return@withLock
             }
-            val manager = GlanceAppWidgetManager(context)
-            val placed =
-                widgets().flatMap { widget ->
-                    manager.getGlanceIds(widget.javaClass).map { Placed(widget, it, manager.getAppWidgetId(it)) }
-                }
+            val placed = placedWidgets()
+            if (placed.isEmpty()) {
+                Log.d(Log.Area.Widget) { "skip reason=$reason: no widgets placed" }
+                return@withLock
+            }
             throttle.retain(placed.map { it.appWidgetId }.toSet())
             val now = clock.nowMillis()
             val startOfDay = startOfDayMillis(now, ZoneId.systemDefault())
@@ -122,6 +124,22 @@ class WidgetRefresher
             }
         }
 
+        /**
+         * The placed widgets, asked of AppWidgetManager per receiver. Not GlanceAppWidgetManager.getGlanceIds: that
+         * reads a receiver -> widget class map Glance only rewrites in its own onUpdate (which [ThrottledWidgetReceiver]
+         * replaces) or on a resize, and R8 renames the widget classes in each release build, so after an update the
+         * map named classes that no longer existed and every refresh found nothing.
+         */
+        private fun placedWidgets(): List<Placed> {
+            val appWidgets = AppWidgetManager.getInstance(context)
+            val glance = GlanceAppWidgetManager(context)
+            return widgets().flatMap { (widget, receiver) ->
+                appWidgets.getAppWidgetIds(ComponentName(context, receiver)).map {
+                    Placed(widget, glance.getGlanceIdBy(it), it)
+                }
+            }
+        }
+
         private fun scheduleDeferred(delayMillis: Long) {
             if (deferred?.isActive == true) return
             deferred =
@@ -153,6 +171,10 @@ class WidgetRefresher
             const val TOP_APPS = 3
             const val MINUTE_MILLIS = 60_000L
 
-            fun widgets(): List<GlanceAppWidget> = listOf(UnlocksWidget(), ScreenTimeWidget())
+            fun widgets(): List<Pair<GlanceAppWidget, Class<out ThrottledWidgetReceiver>>> =
+                listOf(
+                    UnlocksWidget() to UnlocksWidgetReceiver::class.java,
+                    ScreenTimeWidget() to ScreenTimeWidgetReceiver::class.java,
+                )
         }
     }

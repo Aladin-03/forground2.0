@@ -2,6 +2,14 @@
 
 All notable changes to Foreground 2.0. Versions follow `versionName` in `app/build.gradle.kts`.
 
+## [1.0.4] — 2026-10-24
+
+### Fixed
+
+- The home-screen widgets stopped updating after an app update and kept showing old numbers. Refreshes now find
+  the placed widgets directly from Android instead of a record that went stale when a release build renamed the
+  widget classes.
+
 ## [1.0.3] — 2026-10-24
 
 ### Added
@@ -46,6 +54,7 @@ First release.
 - Detection survives reboots and app updates, and alerts when a required permission is revoked.
 - Release signing from `keystore.properties`; the APK is named `foreground2-<version>.apk`.
 
+[1.0.4]: https://github.com/Aladin-03/forground2.0/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Aladin-03/forground2.0/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Aladin-03/forground2.0/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Aladin-03/forground2.0/releases/tag/v1.0.1
