@@ -14,11 +14,14 @@ private const val START = 1_700_000_000_000L
 private val TIMING =
     Timing(
         breathDurationMillis = 10_000L,
-        allowedWindowMillis = 60_000L,
+        mindfulWindowMillis = 60_000L,
+        focusedWindowMillis = 30_000L,
+        strictWindowMillis = 10_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
         widgetRefreshIntervalMillis = 300_000L,
         widgetMinRefreshIntervalMillis = 60_000L,
+        sitThroughMillis = 20_000L,
     )
 
 /** Usage log backed by a list; records each queried window. */

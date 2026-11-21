@@ -1,1 +1,1 @@
-Repositories the rest of the app depends on: an interface plus its implementation (Room / DataStore backed). Bound in di/.
+Repositories the rest of the app depends on: an interface plus its implementation (Room / DataStore backed), bound in di/; and WatchChanges, which applies the watch-mode rules when the UI enables, tightens, loosens or unwatches an app.

@@ -19,6 +19,8 @@ import com.aladin.foreground2.feature.onboarding.OnboardingRoute
 import com.aladin.foreground2.feature.onboarding.ui.OnboardingScreen
 import com.aladin.foreground2.feature.picker.PickerRoute
 import com.aladin.foreground2.feature.picker.ui.PickerScreen
+import com.aladin.foreground2.feature.sitthrough.SitThroughRoute
+import com.aladin.foreground2.feature.sitthrough.ui.SitThroughScreen
 import com.aladin.foreground2.feature.stats.StatsRoute
 import com.aladin.foreground2.feature.stats.StatsTab
 import com.aladin.foreground2.feature.stats.ui.StatsScreen
@@ -51,10 +53,15 @@ fun AppNavHost(
                 onOpenPicker = { navController.navigate(PickerRoute) },
                 onOpenStats = { navController.navigate(StatsRoute()) },
                 onOpenApp = { navController.navigate(LockAppRoute(it)) },
+                onOpenSitThrough = { navController.navigate(it) },
             )
         }
         composable<LockAppRoute> { LockAppScreen(onDone = { navController.popBackStack() }) }
-        composable<PickerRoute> { PickerScreen() }
+        composable<PickerRoute> { PickerScreen(onOpenSitThrough = { navController.navigate(it) }) }
+        // Back to where it was opened from. Safe to call twice (leaving and finishing can both report it).
+        composable<SitThroughRoute> {
+            SitThroughScreen(onDone = { navController.popBackStack<SitThroughRoute>(inclusive = true) })
+        }
         composable<StatsRoute> { entry -> StatsScreen(initialTab = entry.toRoute<StatsRoute>().tab) }
     }
 }

@@ -46,8 +46,8 @@ android {
         applicationId = "com.aladin.foreground2"
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -65,7 +65,10 @@ android {
         debug {
             // Short timings so the full gate cycle can be exercised by hand on a device.
             buildConfigField("long", "BREATH_DURATION_MS", "10_000L")
-            buildConfigField("long", "ALLOWED_WINDOW_MS", "60_000L")
+            buildConfigField("long", "MINDFUL_WINDOW_MS", "60_000L")
+            buildConfigField("long", "FOCUSED_WINDOW_MS", "30_000L")
+            buildConfigField("long", "STRICT_WINDOW_MS", "10_000L")
+            buildConfigField("long", "SIT_THROUGH_MS", "20_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
             buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
             buildConfigField("long", "WIDGET_REFRESH_INTERVAL_MS", "300_000L")
@@ -80,7 +83,10 @@ android {
             // them (uninstall first, which wipes locks).
             signingConfig = signingConfigs.getByName("release")
             buildConfigField("long", "BREATH_DURATION_MS", "60_000L")
-            buildConfigField("long", "ALLOWED_WINDOW_MS", "600_000L")
+            buildConfigField("long", "MINDFUL_WINDOW_MS", "600_000L")
+            buildConfigField("long", "FOCUSED_WINDOW_MS", "300_000L")
+            buildConfigField("long", "STRICT_WINDOW_MS", "60_000L")
+            buildConfigField("long", "SIT_THROUGH_MS", "300_000L")
             buildConfigField("long", "POLL_INTERVAL_MS", "500L")
             buildConfigField("long", "PERMISSION_CHECK_INTERVAL_MS", "5_000L")
             buildConfigField("long", "WIDGET_REFRESH_INTERVAL_MS", "300_000L")
@@ -186,6 +192,10 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.junit4)
+    testRuntimeOnly(libs.junit.vintage.engine)
 
     detektPlugins(project(":detekt-rules"))
 }

@@ -10,14 +10,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -34,18 +40,23 @@ import com.aladin.foreground2.core.designsystem.ForegroundTheme
 import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.domain.LockRemaining
+import com.aladin.foreground2.core.domain.watch.WatchMode
 import com.aladin.foreground2.core.permissions.Permission
 import com.aladin.foreground2.core.permissions.names
 import com.aladin.foreground2.core.permissions.openSettingsFor
 import com.aladin.foreground2.core.ui.AppIcon
+import com.aladin.foreground2.core.ui.ModeChooserDialog
+import com.aladin.foreground2.core.ui.ModeChooserTarget
 import com.aladin.foreground2.core.ui.formatUnlockTime
 import com.aladin.foreground2.core.ui.lockRemainingText
+import com.aladin.foreground2.core.ui.modeWithWindow
 import com.aladin.foreground2.core.ui.rememberLockRemaining
 import com.aladin.foreground2.feature.home.HomeFix
 import com.aladin.foreground2.feature.home.HomeUiState
 import com.aladin.foreground2.feature.home.HomeViewModel
+import com.aladin.foreground2.feature.home.HomeWatchedApp
 import com.aladin.foreground2.feature.home.LockedApp
-import com.aladin.foreground2.feature.home.WatchedApp
+import com.aladin.foreground2.feature.sitthrough.SitThroughRoute
 
 // Lazy-list keys are per section, since an app can be in both lists.
 private enum class Section { Locked, Watched }
@@ -60,6 +71,11 @@ private sealed interface HomeLink {
     data class App(
         val packageName: String,
     ) : HomeLink
+
+    /** Choose a watched app's mode. */
+    data class Mode(
+        val packageName: String,
+    ) : HomeLink
 }
 
 @Composable
@@ -67,12 +83,17 @@ fun HomeScreen(
     onOpenPicker: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenApp: (packageName: String) -> Unit,
+    onOpenSitThrough: (SitThroughRoute) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
+    val currentOnOpenSitThrough by rememberUpdatedState(onOpenSitThrough)
+    LaunchedEffect(viewModel) { viewModel.sitThrough.collect { currentOnOpenSitThrough(it) } }
+    // The watched app whose mode chooser is open.
+    var choosingFor by rememberSaveable { mutableStateOf<String?>(null) }
     HomeContent(
         state = state,
         clock = viewModel.clock,
@@ -87,11 +108,25 @@ fun HomeScreen(
                 HomeLink.Picker -> onOpenPicker()
                 HomeLink.Stats -> onOpenStats()
                 is HomeLink.App -> onOpenApp(link.packageName)
+                is HomeLink.Mode -> choosingFor = link.packageName
             }
         },
         loadIcon = viewModel::loadIcon,
         modifier = modifier,
     )
+    val choosing = state.watched.find { it.app.packageName == choosingFor }
+    if (choosing != null) {
+        ModeChooserDialog(
+            target = ModeChooserTarget(choosing.app.label, choosing.mode, choosing.lockedUntil),
+            clock = viewModel.clock,
+            windowOf = viewModel::windowMillis,
+            onPick = { mode ->
+                viewModel.onModePicked(choosing.app, mode)
+                choosingFor = null
+            },
+            onDismiss = { choosingFor = null },
+        )
+    }
 }
 
 @Composable
@@ -144,6 +179,7 @@ private fun HomeContent(
                     watched = watched,
                     loadIcon = loadIcon,
                     onClick = { onOpen(HomeLink.App(watched.app.packageName)) },
+                    onModeClick = { onOpen(HomeLink.Mode(watched.app.packageName)) },
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -254,12 +290,16 @@ private fun LockRow(
     }
 }
 
-/** A watched app, marked locked or breath-on-open. Tapping it opens "Lock <app>" (or its running lock). */
+/**
+ * A watched app, marked locked or breath-on-open, with its mode chip. Tapping the row opens "Lock <app>" (or its
+ * running lock); tapping the chip opens the mode chooser.
+ */
 @Composable
 private fun WatchedRow(
-    watched: WatchedApp,
+    watched: HomeWatchedApp,
     loadIcon: suspend (String) -> ImageBitmap?,
     onClick: () -> Unit,
+    onModeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -268,20 +308,23 @@ private fun WatchedRow(
         horizontalArrangement = Arrangement.spacedBy(ForegroundTheme.spacing.md),
     ) {
         AppIcon(packageName = watched.app.packageName, loadIcon = loadIcon)
-        Text(
-            text = watched.app.label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = stringResource(if (watched.locked) R.string.home_watched_locked else R.string.home_watched_breath),
-            style = MaterialTheme.typography.bodyMedium,
-            color =
-                if (watched.locked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = watched.app.label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text =
+                    stringResource(if (watched.locked) R.string.home_watched_locked else R.string.home_watched_breath),
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (watched.locked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AssistChip(onClick = onModeClick, label = { Text(modeWithWindow(watched.mode, watched.windowMillis)) })
     }
 }
 
@@ -299,9 +342,23 @@ private fun HomeContentPreview() {
                         ),
                     watched =
                         listOf(
-                            WatchedApp(AppInfo("com.instagram.android", "Instagram"), locked = true),
-                            WatchedApp(AppInfo("com.whatsapp", "WhatsApp"), locked = false),
-                            WatchedApp(AppInfo("com.google.android.youtube", "YouTube"), locked = true),
+                            HomeWatchedApp(
+                                AppInfo("com.instagram.android", "Instagram"),
+                                WatchMode.STRICT,
+                                windowMillis = 60_000L,
+                                lockedUntil = 2_700_000L,
+                            ),
+                            HomeWatchedApp(
+                                AppInfo("com.whatsapp", "WhatsApp"),
+                                WatchMode.MINDFUL,
+                                windowMillis = 600_000L,
+                            ),
+                            HomeWatchedApp(
+                                AppInfo("com.google.android.youtube", "YouTube"),
+                                WatchMode.FOCUSED,
+                                windowMillis = 300_000L,
+                                lockedUntil = 190_000_000L,
+                            ),
                         ),
                     missing = listOf(Permission.Overlay),
                     serviceRunning = true,

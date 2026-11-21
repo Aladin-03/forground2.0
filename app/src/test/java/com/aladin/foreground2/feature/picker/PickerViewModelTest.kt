@@ -3,17 +3,37 @@ package com.aladin.foreground2.feature.picker
 import androidx.compose.ui.graphics.ImageBitmap
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.apps.LauncherAppSource
-import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
+import com.aladin.foreground2.core.data.repo.WatchChanges
 import com.aladin.foreground2.core.domain.AppInfo
+import com.aladin.foreground2.core.domain.FakeClock
+import com.aladin.foreground2.core.domain.watch.WatchMode
+import com.aladin.foreground2.feature.sitthrough.SitThroughRoute
+import com.aladin.foreground2.testing.FakeLockRepository
+import com.aladin.foreground2.testing.FakeWatchedAppsRepository
 import com.aladin.foreground2.testing.MainDispatcherExtension
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.aladin.foreground2.testing.watchedAs
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+
+private const val NOW = 1_700_000_000_000L
+private const val HOUR = 3_600_000L
+private val TIMING =
+    Timing(
+        breathDurationMillis = 10_000L,
+        mindfulWindowMillis = 60_000L,
+        focusedWindowMillis = 30_000L,
+        strictWindowMillis = 10_000L,
+        pollIntervalMillis = 500L,
+        permissionCheckIntervalMillis = 5_000L,
+        widgetRefreshIntervalMillis = 300_000L,
+        widgetMinRefreshIntervalMillis = 60_000L,
+        sitThroughMillis = 20_000L,
+    )
 
 private class FakeLauncherAppSource(
     private val apps: List<AppInfo>,
@@ -23,20 +43,6 @@ private class FakeLauncherAppSource(
     override suspend fun icon(packageName: String): ImageBitmap? = null
 
     override suspend fun label(packageName: String): String? = apps.find { it.packageName == packageName }?.label
-}
-
-private class FakeWatchedAppsRepository : WatchedAppsRepository {
-    val watched = MutableStateFlow<List<AppInfo>>(emptyList())
-
-    override fun observeWatched(): Flow<List<AppInfo>> = watched
-
-    override suspend fun watch(app: AppInfo) {
-        if (watched.value.none { it.packageName == app.packageName }) watched.value += app
-    }
-
-    override suspend fun unwatch(packageName: String) {
-        watched.value = watched.value.filterNot { it.packageName == packageName }
-    }
 }
 
 /** Waits for the first state matching [predicate], skipping intermediate ones. */
@@ -54,8 +60,17 @@ class PickerViewModelTest {
 
     private val chrome = AppInfo("com.android.chrome", "Chrome")
     private val instagram = AppInfo("com.instagram.android", "Instagram")
+    private val clock = FakeClock(NOW)
     private val repo = FakeWatchedAppsRepository()
-    private val viewModel = PickerViewModel(FakeLauncherAppSource(listOf(instagram, chrome)), repo)
+    private val locks = FakeLockRepository(clock)
+    private val viewModel =
+        PickerViewModel(
+            FakeLauncherAppSource(listOf(instagram, chrome)),
+            repo,
+            locks,
+            WatchChanges(repo, locks, TIMING),
+            clock,
+        )
 
     @Test
     fun `lists launcher apps alphabetically once loaded`() =
@@ -68,24 +83,43 @@ class PickerViewModelTest {
         }
 
     @Test
-    fun `toggling on saves the app and moves it first, toggling off removes it`() =
+    fun `enabling with a picked mode saves the app in that mode and moves it first`() =
         runTest {
             viewModel.uiState.test {
                 awaitState { !it.loading }
-
-                viewModel.onToggle(instagram, watched = true)
+                viewModel.onEnable(instagram, WatchMode.STRICT)
                 assertEquals(
-                    listOf(PickerItem(instagram, watched = true), PickerItem(chrome, watched = false)),
+                    listOf(PickerItem(instagram, mode = WatchMode.STRICT), PickerItem(chrome)),
                     awaitState { it.items.any(PickerItem::watched) }.items,
                 )
-                assertEquals(listOf(instagram), repo.watched.value)
+                assertEquals(listOf(instagram.watchedAs(WatchMode.STRICT)), repo.watched.value)
+            }
+        }
 
-                viewModel.onToggle(instagram, watched = false)
-                assertEquals(
-                    listOf(chrome, instagram),
-                    awaitState { it.items.none(PickerItem::watched) }.items.map { it.app },
-                )
-                assertTrue(repo.watched.value.isEmpty())
+    @Test
+    fun `switching off asks for the countdown and leaves the app watched`() =
+        runTest {
+            repo.watched.value = listOf(instagram.watchedAs(WatchMode.FOCUSED))
+            viewModel.sitThrough.test {
+                viewModel.onDisable(instagram)
+                assertEquals(SitThroughRoute(instagram.packageName), awaitItem())
+            }
+            assertEquals(WatchMode.FOCUSED, repo.modeOf(instagram.packageName))
+        }
+
+    @Test
+    fun `a locked app can't be switched off and its row carries the lock`() =
+        runTest {
+            repo.watched.value = listOf(instagram.watchedAs())
+            locks.locks.value = mapOf(instagram.packageName to NOW + HOUR)
+            viewModel.sitThrough.test {
+                viewModel.onDisable(instagram)
+                expectNoEvents()
+            }
+            assertEquals(WatchMode.MINDFUL, repo.modeOf(instagram.packageName))
+            viewModel.uiState.test {
+                val row = awaitState { !it.loading }.items.first()
+                assertEquals(PickerItem(instagram, WatchMode.MINDFUL, lockedUntil = NOW + HOUR), row)
             }
         }
 

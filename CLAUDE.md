@@ -12,16 +12,16 @@ All versions live in `gradle/libs.versions.toml`. `detekt-rules/` is build tooli
 | Package | What belongs there |
 |---|---|
 | `core/designsystem/` | Theme, colour (`Palette`, chart palette `ChartColors`), widget tokens, spacing (`ForegroundTheme.spacing`), sizes (`ForegroundTheme.sizing`), typography tokens |
-| `core/domain/` | Pure Kotlin: models, gate state machine, `Clock`, daily usage stats (`usage/`) |
+| `core/domain/` | Pure Kotlin: models, gate state machine, `Clock`, watch modes and their change rules (`watch/`), daily usage stats (`usage/`) |
 | `core/data/db/` | Room database, entities, DAOs |
 | `core/data/usage/` | Usage log reader (UsageStatsManager), daily-history recorder into Room, its WorkManager fallback |
 | `core/data/apps/` | Installed-app sources via PackageManager (launcher app list, icons) |
-| `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs |
+| `core/data/repo/` | Repository interfaces + impls; the rest of the app depends on these, not on DAOs. `WatchChanges` applies the watch-mode rules |
 | `core/permissions/` | Permission checks, their display names, and Settings deep-link intents |
-| `core/ui/` | Compose helpers shared by app screens and overlays (app icon, duration picker and its number wheel, lock countdown text, unlock-time format) |
+| `core/ui/` | Compose helpers shared by app screens and overlays (app icon, duration picker and its number wheel, lock countdown text, unlock-time format, mode chooser) |
 | `core/logging/` | `Log.kt`, the only logger |
-| `core/config/` | `Timing.kt` (breath, window, poll and permission-check intervals from BuildConfig) |
-| `feature/{onboarding,picker,home,lock,stats}/` | ViewModel + route; Composables in `ui/` |
+| `core/config/` | `Timing.kt` (breath, per-mode windows, sit-through countdown, poll and permission-check intervals from BuildConfig) |
+| `feature/{onboarding,picker,home,lock,sitthrough,stats}/` | ViewModel + route; Composables in `ui/` |
 | `service/detection/` | Foreground service + front-app detection (UsageStatsManager) |
 | `service/overlay/` | Overlay window host + overlay screens |
 | `widget/` | Home-screen widgets (Glance): unlocks and screen time, their receivers, throttled refresh |
@@ -42,10 +42,14 @@ Each package has a README.md with a one-line description.
   `FG2`, on in debug, off in release. Log every gate state transition and every overlay show/hide.
 - **Time through `Clock` and `Timing`.** Never call `System.currentTimeMillis()` or read timing constants
   directly; inject `Clock` (use `FakeClock` in tests) and `Timing`.
-  Debug: breath 10 s, window 1 min, poll 500 ms. Release: breath 60 s, window 10 min, poll 500 ms.
+  Debug: breath 10 s, windows Mindful 1 min / Focused 30 s / Strict 10 s, sit-through 20 s, poll 500 ms.
+  Release: breath 60 s, windows 10 / 5 / 1 min, sit-through 5 min, poll 500 ms.
   Both: permission recheck 5 s (the service posts an alert while Usage access / overlay is revoked), widget
   refresh every 5 min while unlocked, at most once a minute per widget.
-- Unit tests: JUnit 5 + kotlinx-coroutines-test + Turbine, under `app/src/test/`.
+- **Database changes need a Migration** (add it to `ForegroundDatabase` and `di/DataModule`) and a case in
+  `MigrationTest`. Never a destructive fallback: the phone holds real locks and history.
+- Unit tests: JUnit 5 + kotlinx-coroutines-test + Turbine, under `app/src/test/`. `MigrationTest` is the exception:
+  JUnit 4 under Robolectric (run by the vintage engine), on Android's SQLite.
 
 ## Commands
 

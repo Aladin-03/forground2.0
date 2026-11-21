@@ -21,11 +21,14 @@ private val ZONE = ZoneId.of("Asia/Kolkata")
 private val TIMING =
     Timing(
         breathDurationMillis = 10_000L,
-        allowedWindowMillis = 60_000L,
+        mindfulWindowMillis = 60_000L,
+        focusedWindowMillis = 30_000L,
+        strictWindowMillis = 10_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
         widgetRefreshIntervalMillis = 5 * MINUTE,
         widgetMinRefreshIntervalMillis = MINUTE,
+        sitThroughMillis = 20_000L,
     )
 
 private fun millisAt(

@@ -1,5 +1,7 @@
 package com.aladin.foreground2.core.domain.gate
 
+import com.aladin.foreground2.core.domain.watch.WatchMode
+
 /** Where one watched app's gate is. Times are epoch ms. */
 sealed interface GateState {
     /** Not in front, or in front with nothing pending. The next entry starts a breath. */
@@ -23,7 +25,10 @@ sealed interface GateState {
         val breathRemainingMs: Long = 0L,
     ) : GateState
 
-    /** App is usable without an overlay until [until]. In memory only. */
+    /**
+     * App is usable without an overlay until [until], fixed when the window started from the app's mode then; a later
+     * mode change only affects the next window. In memory only.
+     */
     data class Allowed(
         val until: Long,
     ) : GateState
@@ -56,8 +61,10 @@ sealed interface GateEvent {
         val now: Long,
     ) : GateEvent
 
+    /** No on the prompt: the window that starts lasts as long as [mode]'s, read at this moment. */
     data class AnsweredNo(
         val now: Long,
+        val mode: WatchMode,
     ) : GateEvent
 
     data object AnsweredYes : GateEvent

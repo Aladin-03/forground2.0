@@ -2,6 +2,23 @@
 
 All notable changes to Foreground 2.0. Versions follow `versionName` in `app/build.gradle.kts`.
 
+## [1.1.0] — 2026-11-21
+
+### Added
+
+- **Watch modes.** Each watched app has its own window after the breath: **Mindful · 10 min**, **Focused · 5 min**
+  or **Strict · 1 min**. Switching an app on asks for its mode; the chip next to each watched app on Home changes it.
+  The usage pill counts down the app's own window.
+- **Loosening is slow.** A looser mode, or unwatching an app, first takes a 5-minute countdown that has to be sat
+  through on screen; leaving the screen cancels it. Tightening applies at once. A locked app can't be loosened or
+  unwatched.
+
+### Changed
+
+- A mode change applies from the next window, never to one that's running.
+- Apps watched before this version are Mindful, the 10-minute window they had. Watched apps, locks and history are
+  kept by a database migration.
+
 ## [1.0.4] — 2026-10-24
 
 ### Fixed
@@ -54,6 +71,7 @@ First release.
 - Detection survives reboots and app updates, and alerts when a required permission is revoked.
 - Release signing from `keystore.properties`; the APK is named `foreground2-<version>.apk`.
 
+[1.1.0]: https://github.com/Aladin-03/forground2.0/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/Aladin-03/forground2.0/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Aladin-03/forground2.0/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Aladin-03/forground2.0/compare/v1.0.1...v1.0.2

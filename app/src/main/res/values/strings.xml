@@ -22,6 +22,33 @@
   <string name="picker_search_hint">Search apps</string>
   <string name="picker_empty">No apps match</string>
 
+  <!-- Watch modes. A mode is shown with its window, e.g. "Strict · 1 min" (mode_with_window). -->
+  <string name="mode_mindful">Mindful</string>
+  <string name="mode_focused">Focused</string>
+  <string name="mode_strict">Strict</string>
+  <!-- %1$s is a mode name, %2$s its window, e.g. "Mindful · 10 min". -->
+  <string name="mode_with_window">%1$s · %2$s</string>
+  <!-- A window length in whole minutes, e.g. 10 min. -->
+  <string name="mode_window_minutes">%1$d min</string>
+  <!-- A window length in seconds (debug builds only), e.g. 30 s. -->
+  <string name="mode_window_seconds">%1$d s</string>
+  <!-- %1$s is the app's label. -->
+  <string name="mode_chooser_title">Watch %1$s</string>
+  <string name="mode_chooser_body">How long you can use the app after each breath.</string>
+  <string name="mode_chooser_current">Current</string>
+  <string name="mode_chooser_cancel">Cancel</string>
+  <!-- %1$s is the time left on the app's lock, one of the lock_remaining_* strings. -->
+  <string name="mode_locked_left">Locked · %1$s</string>
+
+  <!-- Sit-through countdown before loosening or unwatching. %1$s is the app's label. -->
+  <string name="sit_disable_title">Stop watching %1$s</string>
+  <!-- %1$s is the app's label, %2$s the mode name, e.g. "Loosen YouTube to Mindful". -->
+  <string name="sit_loosen_title">Loosen %1$s to %2$s</string>
+  <!-- Minutes:seconds left, e.g. 4:59. -->
+  <string name="sit_countdown">%1$d:%2$02d</string>
+  <string name="sit_think">Take this time to think it over.</string>
+  <string name="sit_cancel">Cancel</string>
+
   <string name="stats_title">Usage</string>
   <string name="stats_tab_unlocks">Unlocks</string>
   <string name="stats_tab_screen_time">Screen time</string>

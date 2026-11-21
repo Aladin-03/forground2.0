@@ -39,7 +39,8 @@ this without an accessibility service: it detects apps with Usage access and blo
 1. **Open a watched app.** A full-screen breathing pause covers it for **60 seconds**. You can't skip it, and Back
    does nothing. If you leave and come back, the minute starts over.
 2. **Choose.** After the breath, Foreground asks: *Block this app?*
-   - **No:** use the app for up to **10 minutes**. When the time is up, the breath comes back.
+   - **No:** use the app for its window: **10, 5 or 1 minute**, depending on the app's mode. When the time is up,
+     the breath comes back.
    - **Yes:** choose how long to lock it, from 1 minute to 30 days. **A lock can't be cancelled or shortened.**
 3. **Locked.** While an app is locked, opening it shows a live countdown and a single **Go home** button.
 
@@ -66,9 +67,17 @@ the app will unlock. Each app has its own lock, and locks survive reboots.
 ### Lock from Home
 
 Tap a watched app on the Home screen to lock it in advance. A lock set from Home takes effect immediately, even while
-the app is in its 10-minute window. Home lists active locks with their time left.
+the app is in its window. Home lists active locks with their time left.
 
 ![Home with locked and watched apps, and the lock picker opened from Home](docs/images/feature-home.png)
+
+### Watch modes
+
+Each watched app has a mode: **Mindful · 10 min**, **Focused · 5 min** or **Strict · 1 min**, the window you get
+after the breath. You pick it when you switch an app on, and change it from the chip next to the app on Home.
+Making an app stricter applies at once. Making it looser, or unwatching it, first takes a **5-minute countdown** that
+you have to sit through on screen: leave the screen and it's cancelled. While an app is locked it can't be loosened or
+unwatched at all. A new mode applies from the next window, never to one that's running.
 
 ### Media pause
 
@@ -77,7 +86,7 @@ never resumes playback afterwards; going back is your choice.
 
 ### Usage pill
 
-During the 10-minute window, a small pill at the top right shows the time left and how long you've used the app
+During the window, a small pill at the top right shows the time left and how long you've used the app
 today, e.g. `9:33 · 3h 2m`. It stays in the same place in portrait, landscape and fullscreen video, and taps go
 through it to the app.
 
@@ -139,7 +148,7 @@ First launch walks you through each permission, with a button that opens the rig
    use. In the app's settings, turn on **Autostart** (sometimes called *App launch* or *Auto-launch*) and allow it to
    run in the background. On some phones, also lock Foreground in the recent-apps screen. [dontkillmyapp.com](https://dontkillmyapp.com) has
    steps for each brand.
-6. Tap **Watched apps** and choose the apps that should get a breath.
+6. Tap **Watched apps**, switch on the apps that should get a breath, and pick a mode for each.
 
 ## Limitations
 
@@ -151,7 +160,7 @@ Foreground is a commitment device. It is not a prison:
 - **A brief flash.** Detection checks for the front app every half second, so a watched app may appear for a moment
   before the overlay covers it.
 - **Some media can't be paused.** Players with no media session (for example YouTube Shorts) are muted, not paused.
-- **The 10-minute window is in memory only.** If the app restarts, the next open gets a fresh breath.
+- **The window is in memory only.** If the app restarts, the next open gets a fresh breath.
 - **Tested on one phone** (Infinix, Android 15). Other phones' battery management may behave differently.
 
 ## Build from source
@@ -159,7 +168,7 @@ Foreground is a commitment device. It is not a prison:
 Requirements: JDK 17 and the Android SDK (compile SDK 35).
 
 ```sh
-./gradlew assembleDebug          # debug APK: 10 s breath, 1 min window
+./gradlew assembleDebug          # debug APK: 10 s breath, windows 1 min / 30 s / 10 s, 20 s countdown
 ./gradlew installDebug           # install on a connected phone
 ./gradlew detekt ktlintCheck     # static analysis
 ./gradlew testDebugUnitTest      # unit tests

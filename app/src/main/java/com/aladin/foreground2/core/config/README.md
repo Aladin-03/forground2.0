@@ -1,1 +1,1 @@
-Timing.kt: breath duration, allowed window, poll and permission-check intervals, read from BuildConfig (short in debug, real in release). PillPosition.kt: where the usage pill sits, just below the status bar.
+Timing.kt: breath duration, each watch mode's allowed window, the sit-through countdown, poll and permission-check intervals, read from BuildConfig (short in debug, real in release). PillPosition.kt: where the usage pill sits, just below the status bar.

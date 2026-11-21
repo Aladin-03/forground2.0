@@ -18,6 +18,9 @@ coroutines = "1.10.2"
 junitJupiter = "5.11.4"
 junitPlatform = "1.11.4"
 turbine = "1.2.0"
+robolectric = "4.14.1"
+androidxTestCore = "1.6.1"
+junit4 = "4.13.2"
 detekt = "1.23.8"
 # Kotlin version detekt 1.23.8 was built against; its classpath is pinned to this.
 detektKotlin = "2.0.21"
@@ -51,6 +54,11 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junitJupiter" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+# JUnit 4 runs only the Robolectric (Android SQLite) migration test, via the vintage engine.
+junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 detekt-api = { module = "io.gitlab.arturbosch.detekt:detekt-api", version.ref = "detekt" }
 detekt-test = { module = "io.gitlab.arturbosch.detekt:detekt-test", version.ref = "detekt" }

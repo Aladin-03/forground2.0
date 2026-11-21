@@ -15,32 +15,39 @@ import com.aladin.foreground2.core.domain.gate.GateState.Idle
 import com.aladin.foreground2.core.domain.gate.GateState.Locked
 import com.aladin.foreground2.core.domain.gate.GateState.PickingDuration
 import com.aladin.foreground2.core.domain.gate.GateState.Prompting
+import com.aladin.foreground2.core.domain.watch.WatchMode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 
-/** Debug timings (breath 10 s, window 1 min), matching the debug BuildConfig. */
+/** Debug timings (breath 10 s, windows 1 min / 30 s / 10 s), matching the debug BuildConfig. */
 private val DEBUG =
     Timing(
         breathDurationMillis = 10_000L,
-        allowedWindowMillis = 60_000L,
+        mindfulWindowMillis = 60_000L,
+        focusedWindowMillis = 30_000L,
+        strictWindowMillis = 10_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
         widgetRefreshIntervalMillis = 300_000L,
         widgetMinRefreshIntervalMillis = 60_000L,
+        sitThroughMillis = 20_000L,
     )
 
-/** Release timings (breath 60 s, window 10 min). */
+/** Release timings (breath 60 s, windows 10 / 5 / 1 min). */
 private val RELEASE =
     Timing(
         breathDurationMillis = 60_000L,
-        allowedWindowMillis = 600_000L,
+        mindfulWindowMillis = 600_000L,
+        focusedWindowMillis = 300_000L,
+        strictWindowMillis = 60_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
         widgetRefreshIntervalMillis = 300_000L,
         widgetMinRefreshIntervalMillis = 60_000L,
+        sitThroughMillis = 300_000L,
     )
 
 private const val MINUTE = 60_000L
@@ -74,7 +81,7 @@ private class GateDriver(
 
     fun breathFinished() = send(GateEvent.BreathFinished(now()))
 
-    fun answerNo() = send(GateEvent.AnsweredNo(now()))
+    fun answerNo(mode: WatchMode = WatchMode.MINDFUL) = send(GateEvent.AnsweredNo(now(), mode))
 
     fun answerYes() = send(GateEvent.AnsweredYes)
 
@@ -125,7 +132,7 @@ class GateMachineTest {
             val until = gate.now() + DAY
             assertEquals(emptyList<GateEffect>(), gate.lockAdded(until))
             assertEquals(Locked(until), gate.state)
-            assertEquals(emptyList<GateEffect>(), gate.tickFor(DEBUG.allowedWindowMillis))
+            assertEquals(emptyList<GateEffect>(), gate.tickFor(DEBUG.mindfulWindowMillis))
             gate.leave()
             assertEquals(listOf(ShowLockScreen(until)), gate.enter())
         }
@@ -322,7 +329,7 @@ class GateMachineTest {
             gate.enterAndBreathe()
             val answeredAt = gate.now()
             assertEquals(listOf(HideOverlay), gate.answerNo())
-            assertEquals(Allowed(answeredAt + timing.allowedWindowMillis), gate.state)
+            assertEquals(Allowed(answeredAt + timing.mindfulWindowMillis), gate.state)
         }
 
         @ParameterizedTest
@@ -334,7 +341,7 @@ class GateMachineTest {
             val until = (gate.state as Allowed).until
 
             // Usable for the whole window: no effects before it ends.
-            assertEquals(emptyList<GateEffect>(), gate.tickFor(timing.allowedWindowMillis - timing.pollIntervalMillis))
+            assertEquals(emptyList<GateEffect>(), gate.tickFor(timing.mindfulWindowMillis - timing.pollIntervalMillis))
             assertEquals(Allowed(until), gate.state)
 
             gate.advance(timing.pollIntervalMillis)
@@ -379,12 +386,44 @@ class GateMachineTest {
             val gate = GateDriver()
             gate.enterAndBreathe()
             gate.answerNo()
-            gate.advance(DEBUG.allowedWindowMillis)
+            gate.advance(DEBUG.mindfulWindowMillis)
             gate.tick()
             gate.advance(DEBUG.breathDurationMillis)
             gate.breathFinished()
             gate.answerNo()
-            assertEquals(Allowed(gate.now() + DEBUG.allowedWindowMillis), gate.state)
+            assertEquals(Allowed(gate.now() + DEBUG.mindfulWindowMillis), gate.state)
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.aladin.foreground2.core.domain.gate.GateMachineTest#timings")
+        fun `each mode gets its own window`(timing: Timing) {
+            WatchMode.entries.forEach { mode ->
+                val gate = GateDriver(timing)
+                gate.enterAndBreathe()
+                gate.answerNo(mode)
+                assertEquals(Allowed(gate.now() + timing.windowMillis(mode)), gate.state)
+            }
+        }
+
+        @Test
+        fun `release windows are 10, 5 and 1 minutes`() {
+            assertEquals(10 * MINUTE, RELEASE.windowMillis(WatchMode.MINDFUL))
+            assertEquals(5 * MINUTE, RELEASE.windowMillis(WatchMode.FOCUSED))
+            assertEquals(MINUTE, RELEASE.windowMillis(WatchMode.STRICT))
+        }
+
+        @Test
+        fun `a strict window ends into a breath after one window, the breath stays the same length`() {
+            val gate = GateDriver(RELEASE)
+            gate.enterAndBreathe()
+            gate.answerNo(WatchMode.STRICT)
+            assertEquals(emptyList<GateEffect>(), gate.tickFor(MINUTE - RELEASE.pollIntervalMillis))
+            gate.advance(RELEASE.pollIntervalMillis)
+            assertEquals(listOf(ShowBreath), gate.tick())
+            gate.advance(RELEASE.breathDurationMillis - 1)
+            assertEquals(emptyList<GateEffect>(), gate.breathFinished())
+            gate.advance(1)
+            assertEquals(listOf(ShowPrompt), gate.breathFinished())
         }
     }
 
@@ -664,7 +703,7 @@ class GateMachineTest {
             val effects = mutableListOf<GateEffect>()
             effects += gate.enterAndBreatheEffects()
             effects += gate.answerNo()
-            effects += gate.tickFor(DEBUG.allowedWindowMillis)
+            effects += gate.tickFor(DEBUG.mindfulWindowMillis)
             effects += gate.leave()
             assertEquals(emptyList<GateEffect>(), effects.filterIsInstance<PersistLock>())
         }

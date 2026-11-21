@@ -2,20 +2,22 @@ package com.aladin.foreground2.service.detection
 
 import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.repo.LockRepository
-import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.Clock
 import com.aladin.foreground2.core.domain.gate.GateEffect
 import com.aladin.foreground2.core.domain.gate.GateEvent
 import com.aladin.foreground2.core.domain.gate.GateMachine
 import com.aladin.foreground2.core.domain.gate.GateState
+import com.aladin.foreground2.core.domain.watch.WatchMode
+import com.aladin.foreground2.core.domain.watch.WatchedApp
 import com.aladin.foreground2.core.logging.Log
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Everything that drives the gates, fed to [GateCoordinator.handle] one at a time. */
 sealed interface GateInput {
+    /** The watched-apps table changed: an app was added or removed, or its mode changed. */
     data class WatchedChanged(
-        val apps: List<AppInfo>,
+        val apps: List<WatchedApp>,
     ) : GateInput
 
     data class FrontChanged(
@@ -85,7 +87,9 @@ data class GateUpdate(
  * Tick for the watched app in front (and for any app whose lock has ended), and overlay events into the matching gate
  * events. Locks are the exception to "in memory": [loadLocks] reads the active ones from [LockRepository] when the
  * service starts, PersistLock / DeleteLock effects are written back before [handle] returns, and
- * [GateInput.LocksChanged] (the locks table as a Flow) picks up locks stored elsewhere, i.e. from Home.
+ * [GateInput.LocksChanged] (the locks table as a Flow) picks up locks stored elsewhere, i.e. from Home. Each app's
+ * mode comes with [GateInput.WatchedChanged] and is read when No starts a window, so a mode change never alters a
+ * running window, only the next one.
  * Not thread-safe: call [loadLocks] and [handle] from one coroutine.
  */
 @Singleton
@@ -96,7 +100,7 @@ class GateCoordinator
         private val clock: Clock,
         private val locks: LockRepository,
     ) {
-        private var watched: Map<String, AppInfo> = emptyMap()
+        private var watched: Map<String, WatchedApp> = emptyMap()
         private val states = mutableMapOf<String, GateState>()
         private var front: String? = null
 
@@ -131,7 +135,8 @@ class GateCoordinator
                 is GateInput.FrontChanged -> onFrontChanged(input.change)
                 is GateInput.Tick -> onTick(input.at)
                 is GateInput.BreathFinished -> sendIfWatched(input.packageName, GateEvent.BreathFinished(input.at))
-                is GateInput.AnsweredNo -> sendIfWatched(input.packageName, GateEvent.AnsweredNo(input.at))
+                is GateInput.AnsweredNo ->
+                    sendIfWatched(input.packageName, GateEvent.AnsweredNo(input.at, modeOf(input.packageName)))
                 is GateInput.AnsweredYes -> sendIfWatched(input.packageName, GateEvent.AnsweredYes)
                 is GateInput.LockNowRequested -> sendIfWatched(input.packageName, GateEvent.LockNowRequested(input.at))
                 is GateInput.PickerCancelled -> sendIfWatched(input.packageName, GateEvent.PickerCancelled(input.at))
@@ -157,6 +162,9 @@ class GateCoordinator
                 if (pkg in watched) send(pkg, GateEvent.LockAdded(until)) else null
             }
         }
+
+        /** [packageName]'s mode right now. Only asked for watched apps; the default covers the unwatched case. */
+        private fun modeOf(packageName: String): WatchMode = watched[packageName]?.mode ?: WatchMode.DEFAULT
 
         /** Overlay events can arrive after the app was unwatched; those are dropped. */
         private suspend fun sendIfWatched(
@@ -190,15 +198,26 @@ class GateCoordinator
                 .mapNotNull { send(it, GateEvent.Tick(at)) }
         }
 
-        /** Unwatching an app mid-gate acts like leaving it (hides any overlay), then forgets it. */
-        private suspend fun onWatchedChanged(apps: List<AppInfo>): List<GateUpdate> {
+        /**
+         * Unwatching an app mid-gate acts like leaving it (hides any overlay), then forgets it. A mode change leaves
+         * the gate alone: a running window keeps its end, and the new mode applies from the next No.
+         */
+        private suspend fun onWatchedChanged(apps: List<WatchedApp>): List<GateUpdate> {
             val next = apps.associateBy { it.packageName }
             val removed = watched.keys - next.keys
             val updates = removed.mapNotNull { send(it, GateEvent.Left(clock.nowMillis())) }
             removed.forEach { states.remove(it) }
             if (watched.keys != next.keys) {
-                Log.i(Log.Area.Gate) { "watching ${next.values.map { it.label }}" }
+                Log.i(Log.Area.Gate) { "watching ${next.values.map { "${it.label} (${it.mode.key})" }}" }
             }
+            next.values
+                .filter { it.packageName in watched && watched.getValue(it.packageName).mode != it.mode }
+                .forEach {
+                    Log.i(Log.Area.Gate) {
+                        "${it.label} mode ${watched.getValue(it.packageName).mode.key} -> ${it.mode.key}, " +
+                            "from the next window (now ${stateOf(it.packageName).name})"
+                    }
+                }
             watched = next
             return updates
         }

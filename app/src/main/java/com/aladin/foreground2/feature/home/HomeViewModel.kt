@@ -5,22 +5,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aladin.foreground2.core.data.apps.LauncherAppSource
 import com.aladin.foreground2.core.data.repo.LockRepository
-import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
+import com.aladin.foreground2.core.data.repo.WatchChanges
 import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.Clock
+import com.aladin.foreground2.core.domain.watch.WatchDecision
+import com.aladin.foreground2.core.domain.watch.WatchMode
+import com.aladin.foreground2.core.domain.watch.WatchRequest
 import com.aladin.foreground2.core.logging.Log
 import com.aladin.foreground2.core.permissions.Permission
 import com.aladin.foreground2.core.permissions.PermissionChecker
+import com.aladin.foreground2.feature.sitthrough.SitThroughRoute
 import com.aladin.foreground2.service.detection.DetectionServiceController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,7 +38,7 @@ class HomeViewModel
         private val detectionServiceController: DetectionServiceController,
         private val launcherAppSource: LauncherAppSource,
         lockRepository: LockRepository,
-        watchedAppsRepository: WatchedAppsRepository,
+        private val changes: WatchChanges,
         /** Drives each row's live countdown. */
         val clock: Clock,
     ) : ViewModel() {
@@ -46,8 +53,8 @@ class HomeViewModel
          * locked. Ended locks are dropped here; the service deletes their rows on its next tick.
          */
         @OptIn(ExperimentalCoroutinesApi::class)
-        private val lists: Flow<Pair<List<LockedApp>, List<WatchedApp>>> =
-            combine(lockRepository.observeLocks(), watchedAppsRepository.observeWatched()) { locks, watched ->
+        private val lists: Flow<Pair<List<LockedApp>, List<HomeWatchedApp>>> =
+            combine(lockRepository.observeLocks(), changes.observeWatched()) { locks, watched ->
                 locks to watched
             }.mapLatest { (locks, watched) ->
                 val now = clock.nowMillis()
@@ -61,7 +68,14 @@ class HomeViewModel
                 val watchedApps =
                     watched
                         .sortedBy { it.label.lowercase() }
-                        .map { WatchedApp(it, locked = it.packageName in running) }
+                        .map {
+                            HomeWatchedApp(
+                                AppInfo(it.packageName, it.label),
+                                it.mode,
+                                changes.windowMillis(it.mode),
+                                running[it.packageName],
+                            )
+                        }
                 logIfChanged(lockedApps, now)
                 lockedApps to watchedApps
             }
@@ -74,6 +88,29 @@ class HomeViewModel
                 SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
                 HomeUiState(missing = missing.value, serviceRunning = detectionServiceController.running.value),
             )
+
+        private val sitThroughRequests = Channel<SitThroughRoute>(Channel.BUFFERED)
+
+        /** One route per loosening that needs its sit-through countdown. */
+        val sitThrough: Flow<SitThroughRoute> = sitThroughRequests.receiveAsFlow()
+
+        fun windowMillis(mode: WatchMode): Long = changes.windowMillis(mode)
+
+        /**
+         * [mode] was picked in [app]'s mode chooser. Tightening is applied at once; loosening opens the sit-through
+         * countdown; while locked, loosening is refused (the chooser disables those options anyway).
+         */
+        fun onModePicked(
+            app: AppInfo,
+            mode: WatchMode,
+        ) {
+            viewModelScope.launch {
+                val decision = changes.request(app, WatchRequest.ChangeMode(mode))
+                if (decision is WatchDecision.NeedsCountdown) {
+                    sitThroughRequests.send(SitThroughRoute(app.packageName, mode.key))
+                }
+            }
+        }
 
         /** Rechecks every permission. Called on each ON_RESUME, since grants and revocations happen in Settings. */
         fun refresh() {

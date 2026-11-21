@@ -1,6 +1,8 @@
 package com.aladin.foreground2.feature.picker
 
 import com.aladin.foreground2.core.domain.AppInfo
+import com.aladin.foreground2.core.domain.watch.WatchMode
+import com.aladin.foreground2.testing.watchedAs
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -15,30 +17,49 @@ class PickerItemsTest {
 
     @Test
     fun `nothing watched sorts alphabetically ignoring case`() {
-        val items = pickerItems(launcher, watched = emptyList(), query = "")
+        val items = pickerItems(launcher, watched = emptyList(), locks = emptyMap(), query = "")
         assertEquals(listOf("axis Mobile", "Chrome", "Instagram", "YouTube"), labels(items))
         assertEquals(List(4) { false }, items.map { it.watched })
     }
 
     @Test
     fun `watched apps come first, each group alphabetical`() {
-        val items = pickerItems(launcher, watched = listOf(youtube, instagram), query = "")
+        val items =
+            pickerItems(
+                launcher,
+                watched = listOf(youtube.watchedAs(), instagram.watchedAs()),
+                locks = emptyMap(),
+                query = "",
+            )
         assertEquals(listOf("Instagram", "YouTube", "axis Mobile", "Chrome"), labels(items))
         assertEquals(listOf(true, true, false, false), items.map { it.watched })
     }
 
     @Test
     fun `query matches label or package, case-insensitively and trimmed`() {
-        assertEquals(listOf("Instagram"), labels(pickerItems(launcher, emptyList(), "  INSTA ")))
-        assertEquals(listOf("YouTube"), labels(pickerItems(launcher, emptyList(), "google")))
-        assertEquals(emptyList<String>(), labels(pickerItems(launcher, emptyList(), "zzz")))
+        assertEquals(listOf("Instagram"), labels(pickerItems(launcher, emptyList(), emptyMap(), "  INSTA ")))
+        assertEquals(listOf("YouTube"), labels(pickerItems(launcher, emptyList(), emptyMap(), "google")))
+        assertEquals(emptyList<String>(), labels(pickerItems(launcher, emptyList(), emptyMap(), "zzz")))
     }
 
     @Test
     fun `watched app missing from launcher is still listed so it can be unwatched`() {
         val gone = AppInfo("com.uninstalled", "Gone")
-        val items = pickerItems(launcher, watched = listOf(gone), query = "")
-        assertEquals(PickerItem(gone, watched = true), items.first())
+        val items = pickerItems(launcher, watched = listOf(gone.watchedAs()), locks = emptyMap(), query = "")
+        assertEquals(PickerItem(gone, mode = WatchMode.MINDFUL), items.first())
         assertEquals(5, items.size)
+    }
+
+    @Test
+    fun `rows carry the mode and the running lock`() {
+        val items =
+            pickerItems(
+                launcher,
+                watched = listOf(youtube.watchedAs(WatchMode.STRICT)),
+                locks = mapOf(youtube.packageName to 42L, chrome.packageName to 7L),
+                query = "",
+            )
+        assertEquals(PickerItem(youtube, mode = WatchMode.STRICT, lockedUntil = 42L), items.first())
+        assertEquals(PickerItem(chrome, lockedUntil = 7L), items.find { it.app == chrome })
     }
 }

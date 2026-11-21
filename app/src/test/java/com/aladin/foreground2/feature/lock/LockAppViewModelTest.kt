@@ -5,14 +5,13 @@ import androidx.lifecycle.SavedStateHandle
 import com.aladin.foreground2.core.data.apps.LauncherAppSource
 import com.aladin.foreground2.core.data.db.LockEntity
 import com.aladin.foreground2.core.data.repo.RoomLockRepository
-import com.aladin.foreground2.core.data.repo.WatchedAppsRepository
 import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.FakeClock
 import com.aladin.foreground2.core.domain.LockDuration
 import com.aladin.foreground2.testing.FakeLockDao
+import com.aladin.foreground2.testing.FakeWatchedAppsRepository
 import com.aladin.foreground2.testing.MainDispatcherExtension
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.aladin.foreground2.testing.watchedAs
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -29,22 +28,6 @@ private class FakeLauncherAppSource : LauncherAppSource {
     override suspend fun label(packageName: String): String? = null
 }
 
-private class FakeWatchedAppsRepository(
-    apps: List<AppInfo>,
-) : WatchedAppsRepository {
-    private val watched = MutableStateFlow(apps)
-
-    override fun observeWatched(): Flow<List<AppInfo>> = watched
-
-    override suspend fun watch(app: AppInfo) {
-        watched.value += app
-    }
-
-    override suspend fun unwatch(packageName: String) {
-        watched.value = watched.value.filterNot { it.packageName == packageName }
-    }
-}
-
 /** Runs on the real [RoomLockRepository] over a fake DAO, so the keep-the-later-end rule is the real one. */
 class LockAppViewModelTest {
     @JvmField
@@ -58,7 +41,7 @@ class LockAppViewModelTest {
         LockAppViewModel(
             SavedStateHandle(mapOf(LockAppRoute.ARG_PACKAGE_NAME to YOUTUBE.packageName)),
             RoomLockRepository(dao, clock),
-            FakeWatchedAppsRepository(listOf(YOUTUBE)),
+            FakeWatchedAppsRepository(listOf(YOUTUBE.watchedAs())),
             FakeLauncherAppSource(),
             clock,
         )

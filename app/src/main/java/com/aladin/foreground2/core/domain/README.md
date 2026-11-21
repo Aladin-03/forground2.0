@@ -1,1 +1,1 @@
-Pure Kotlin, no android.* imports: domain models, the gate state machine, the Clock interface. Must be unit-testable on the JVM with no Android stubs. Domain code returns transitions; callers log them via core/logging.
+Pure Kotlin, no android.* imports: domain models, the gate state machine, watch modes and the rules for changing them (watch/), the Clock interface. Must be unit-testable on the JVM with no Android stubs. Domain code returns transitions; callers log them via core/logging.

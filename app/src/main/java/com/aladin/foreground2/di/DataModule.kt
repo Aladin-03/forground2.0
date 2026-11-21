@@ -28,6 +28,8 @@ object DataModule {
     ): ForegroundDatabase =
         Room
             .databaseBuilder(context, ForegroundDatabase::class.java, ForegroundDatabase.NAME)
+            // No destructive fallback: a missing migration must fail loudly rather than wipe locks and history.
+            .addMigrations(ForegroundDatabase.MIGRATION_4_5)
             .build()
 
     @Provides

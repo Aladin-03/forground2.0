@@ -1,6 +1,7 @@
 package com.aladin.foreground2.feature.home
 
 import com.aladin.foreground2.core.domain.AppInfo
+import com.aladin.foreground2.core.domain.watch.WatchMode
 import com.aladin.foreground2.core.permissions.Permission
 
 /** A running lock, as listed on the home screen. */
@@ -9,11 +10,18 @@ data class LockedApp(
     val unlockAtMillis: Long,
 )
 
-/** A watched app, as listed on the home screen: locked, or gets a breath on its next entry. */
-data class WatchedApp(
+/**
+ * A watched app, as listed on the home screen: its mode with that mode's window, and the end of its running lock
+ * (epoch ms) or null if it gets a breath on its next entry.
+ */
+data class HomeWatchedApp(
     val app: AppInfo,
-    val locked: Boolean,
-)
+    val mode: WatchMode,
+    val windowMillis: Long,
+    val lockedUntil: Long? = null,
+) {
+    val locked: Boolean get() = lockedUntil != null
+}
 
 /** What the status row's button does. */
 sealed interface HomeFix {
@@ -30,7 +38,7 @@ data class HomeUiState(
     /** Running locks, soonest to unlock first. */
     val locks: List<LockedApp> = emptyList(),
     /** Every watched app, by label. */
-    val watched: List<WatchedApp> = emptyList(),
+    val watched: List<HomeWatchedApp> = emptyList(),
     /** Every permission not granted right now, required or recommended. */
     val missing: List<Permission> = emptyList(),
     val serviceRunning: Boolean = false,

@@ -29,7 +29,7 @@ object GateMachine {
             is GateEvent.Entered -> onEntered(state, event.now)
             is GateEvent.Left -> onLeft(state, event.now)
             is GateEvent.BreathFinished -> onBreathFinished(state, event.now, timing)
-            is GateEvent.AnsweredNo -> onAnsweredNo(state, event.now, timing)
+            is GateEvent.AnsweredNo -> onAnsweredNo(state, event, timing)
             GateEvent.AnsweredYes -> onAnsweredYes(state)
             is GateEvent.LockNowRequested -> onLockNowRequested(state, event.now, timing)
             is GateEvent.PickerCancelled -> onPickerCancelled(state, event.now, timing)
@@ -83,14 +83,14 @@ object GateMachine {
             Transition(state)
         }
 
-    /** Rule 5. */
+    /** Rule 5: the window lasts as long as the app's mode says, at the moment No was tapped. */
     private fun onAnsweredNo(
         state: GateState,
-        now: Long,
+        event: GateEvent.AnsweredNo,
         timing: Timing,
     ): Transition =
         if (state == Prompting) {
-            Transition(Allowed(until = now + timing.allowedWindowMillis), listOf(HideOverlay))
+            Transition(Allowed(until = event.now + timing.windowMillis(event.mode)), listOf(HideOverlay))
         } else {
             Transition(state)
         }

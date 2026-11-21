@@ -21,11 +21,14 @@ private const val START = 1_700_000_000_000L
 private val TIMING =
     Timing(
         breathDurationMillis = 10_000L,
-        allowedWindowMillis = 60_000L,
+        mindfulWindowMillis = 60_000L,
+        focusedWindowMillis = 30_000L,
+        strictWindowMillis = 10_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
         widgetRefreshIntervalMillis = 300_000L,
         widgetMinRefreshIntervalMillis = 60_000L,
+        sitThroughMillis = 20_000L,
     )
 
 class OverlayEffectsTest {
@@ -167,7 +170,7 @@ class OverlayEffectsTest {
     @Test
     fun `No hides the prompt and shows the pill until the window ends`() =
         runTest {
-            val until = START + TIMING.allowedWindowMillis
+            val until = START + TIMING.mindfulWindowMillis
             effects.apply(update(YOUTUBE, GateEffect.ShowPrompt))
             effects.apply(
                 GateUpdate(YOUTUBE, GateState.Prompting, GateState.Allowed(until), listOf(GateEffect.HideOverlay), ""),
@@ -179,7 +182,7 @@ class OverlayEffectsTest {
     @Test
     fun `leaving the allowed app hides the pill`() =
         runTest {
-            val allowed = GateState.Allowed(START + TIMING.allowedWindowMillis)
+            val allowed = GateState.Allowed(START + TIMING.mindfulWindowMillis)
             effects.apply(GateUpdate(YOUTUBE, allowed, GateState.Idle, emptyList(), ""))
             assertEquals(listOf("hide $YOUTUBE"), pill.calls)
             assertEquals(emptyList<String>(), host.calls)
@@ -188,7 +191,7 @@ class OverlayEffectsTest {
     @Test
     fun `the window ending hides the pill before the breath shows`() =
         runTest {
-            val until = START + TIMING.allowedWindowMillis
+            val until = START + TIMING.mindfulWindowMillis
             effects.apply(
                 GateUpdate(
                     YOUTUBE,
@@ -205,7 +208,7 @@ class OverlayEffectsTest {
     @Test
     fun `a lock from Home during the window hides the pill`() =
         runTest {
-            val allowed = GateState.Allowed(START + TIMING.allowedWindowMillis)
+            val allowed = GateState.Allowed(START + TIMING.mindfulWindowMillis)
             effects.apply(GateUpdate(YOUTUBE, allowed, GateState.Locked(START + 3_600_000L), emptyList(), ""))
             assertEquals(listOf("hide $YOUTUBE"), pill.calls)
         }

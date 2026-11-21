@@ -2,7 +2,6 @@ package com.aladin.foreground2.service.detection
 
 import com.aladin.foreground2.core.config.Timing
 import com.aladin.foreground2.core.data.repo.LockRepository
-import com.aladin.foreground2.core.domain.AppInfo
 import com.aladin.foreground2.core.domain.FakeClock
 import com.aladin.foreground2.core.domain.gate.GateEffect.DeleteLock
 import com.aladin.foreground2.core.domain.gate.GateEffect.HideOverlay
@@ -17,6 +16,8 @@ import com.aladin.foreground2.core.domain.gate.GateState.Idle
 import com.aladin.foreground2.core.domain.gate.GateState.Locked
 import com.aladin.foreground2.core.domain.gate.GateState.PickingDuration
 import com.aladin.foreground2.core.domain.gate.GateState.Prompting
+import com.aladin.foreground2.core.domain.watch.WatchMode
+import com.aladin.foreground2.core.domain.watch.WatchedApp
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,12 +35,21 @@ private const val HOUR = 3_600_000L
 private val TIMING =
     Timing(
         breathDurationMillis = 10_000L,
-        allowedWindowMillis = 60_000L,
+        mindfulWindowMillis = 60_000L,
+        focusedWindowMillis = 30_000L,
+        strictWindowMillis = 10_000L,
         pollIntervalMillis = 500L,
         permissionCheckIntervalMillis = 5_000L,
         widgetRefreshIntervalMillis = 300_000L,
         widgetMinRefreshIntervalMillis = 60_000L,
+        sitThroughMillis = 20_000L,
     )
+
+private fun watched(
+    pkg: String,
+    label: String,
+    mode: WatchMode = WatchMode.MINDFUL,
+) = WatchedApp(pkg, label, mode)
 
 /** In-memory [LockRepository] with the same keep-the-later-end rule as the Room one. */
 private class FakeLockRepository(
@@ -70,7 +80,7 @@ class GateCoordinatorTest {
     fun watch() =
         runTest {
             coordinator.handle(
-                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
+                GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube"), watched(INSTAGRAM, "Instagram"))),
             )
         }
 
@@ -145,7 +155,7 @@ class GateCoordinatorTest {
     fun `unwatching the app mid-breath hides the overlay and forgets it`() =
         runTest {
             front(YOUTUBE)
-            val updates = coordinator.handle(GateInput.WatchedChanged(listOf(AppInfo(INSTAGRAM, "Instagram"))))
+            val updates = coordinator.handle(GateInput.WatchedChanged(listOf(watched(INSTAGRAM, "Instagram"))))
             assertEquals(listOf(GateUpdate(YOUTUBE, Breathing(START), Idle, listOf(HideOverlay), "YouTube")), updates)
             assertEquals(Idle, coordinator.stateOf(YOUTUBE))
             assertTrue(front(LAUNCHER).isEmpty())
@@ -193,7 +203,7 @@ class GateCoordinatorTest {
         runTest {
             prompt(YOUTUBE)
             val updates = coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
-            val until = clock.now + TIMING.allowedWindowMillis
+            val until = clock.now + TIMING.mindfulWindowMillis
             assertEquals(
                 listOf(GateUpdate(YOUTUBE, Prompting, Allowed(until), listOf(HideOverlay), "YouTube")),
                 updates,
@@ -205,8 +215,8 @@ class GateCoordinatorTest {
         runTest {
             prompt(YOUTUBE)
             coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
-            val until = clock.now + TIMING.allowedWindowMillis
-            clock.advanceBy(TIMING.allowedWindowMillis - 1)
+            val until = clock.now + TIMING.mindfulWindowMillis
+            clock.advanceBy(TIMING.mindfulWindowMillis - 1)
             assertTrue(tick().isEmpty())
             clock.advanceBy(1)
             assertEquals(
@@ -336,7 +346,7 @@ class GateCoordinatorTest {
             val restarted = GateCoordinator(TIMING, clock, locks)
             restarted.loadLocks()
             restarted.handle(
-                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
+                GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube"), watched(INSTAGRAM, "Instagram"))),
             )
             val updates = restarted.handle(GateInput.FrontChanged(FrontAppChanged(YOUTUBE, clock.now)))
             assertEquals(
@@ -357,7 +367,7 @@ class GateCoordinatorTest {
 
             coordinator.loadLocks()
             coordinator.handle(
-                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
+                GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube"), watched(INSTAGRAM, "Instagram"))),
             )
             assertEquals(Idle, coordinator.stateOf(YOUTUBE))
             assertEquals(Locked(until), coordinator.stateOf(INSTAGRAM))
@@ -407,12 +417,12 @@ class GateCoordinatorTest {
             val until = clock.now + HOUR
             coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
             front(LAUNCHER)
-            coordinator.handle(GateInput.WatchedChanged(listOf(AppInfo(INSTAGRAM, "Instagram"))))
+            coordinator.handle(GateInput.WatchedChanged(listOf(watched(INSTAGRAM, "Instagram"))))
             clock.advanceBy(HOUR)
             assertTrue(tick().isEmpty())
             assertTrue(locks.stored.isEmpty())
             coordinator.handle(
-                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
+                GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube"), watched(INSTAGRAM, "Instagram"))),
             )
             assertEquals(Idle, coordinator.stateOf(YOUTUBE))
         }
@@ -424,9 +434,9 @@ class GateCoordinatorTest {
             val until = clock.now + HOUR
             coordinator.handle(GateInput.LockStarted(YOUTUBE, until))
             front(LAUNCHER)
-            coordinator.handle(GateInput.WatchedChanged(listOf(AppInfo(INSTAGRAM, "Instagram"))))
+            coordinator.handle(GateInput.WatchedChanged(listOf(watched(INSTAGRAM, "Instagram"))))
             coordinator.handle(
-                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(INSTAGRAM, "Instagram"))),
+                GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube"), watched(INSTAGRAM, "Instagram"))),
             )
             assertEquals(Locked(until), coordinator.stateOf(YOUTUBE))
         }
@@ -436,7 +446,7 @@ class GateCoordinatorTest {
         runTest {
             prompt(YOUTUBE)
             coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
-            val allowedUntil = clock.now + TIMING.allowedWindowMillis
+            val allowedUntil = clock.now + TIMING.mindfulWindowMillis
             front(FOREGROUND)
             val until = clock.now + HOUR
             locks.lock(YOUTUBE, until)
@@ -500,8 +510,84 @@ class GateCoordinatorTest {
             val until = clock.now + HOUR
             assertTrue(coordinator.handle(GateInput.LocksChanged(mapOf(WHATSAPP to until))).isEmpty())
             coordinator.handle(
-                GateInput.WatchedChanged(listOf(AppInfo(YOUTUBE, "YouTube"), AppInfo(WHATSAPP, "WhatsApp"))),
+                GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube"), watched(WHATSAPP, "WhatsApp"))),
             )
             assertEquals(Locked(until), coordinator.stateOf(WHATSAPP))
+        }
+
+    @Test
+    fun `No opens the window of the app's own mode`() =
+        runTest {
+            coordinator.handle(
+                GateInput.WatchedChanged(
+                    listOf(
+                        watched(YOUTUBE, "YouTube", WatchMode.STRICT),
+                        watched(INSTAGRAM, "Instagram", WatchMode.FOCUSED),
+                    ),
+                ),
+            )
+            prompt(YOUTUBE)
+            coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+            assertEquals(Allowed(clock.now + TIMING.strictWindowMillis), coordinator.stateOf(YOUTUBE))
+            prompt(INSTAGRAM)
+            coordinator.handle(GateInput.AnsweredNo(INSTAGRAM, clock.now))
+            assertEquals(Allowed(clock.now + TIMING.focusedWindowMillis), coordinator.stateOf(INSTAGRAM))
+        }
+
+    @Test
+    fun `tightening mid-window keeps the running window and applies from the next one`() =
+        runTest {
+            prompt(YOUTUBE)
+            coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+            val until = clock.now + TIMING.mindfulWindowMillis
+            clock.advanceBy(5_000)
+
+            val updates =
+                coordinator.handle(
+                    GateInput.WatchedChanged(
+                        listOf(watched(YOUTUBE, "YouTube", WatchMode.STRICT), watched(INSTAGRAM, "Instagram")),
+                    ),
+                )
+            assertTrue(updates.isEmpty())
+            assertEquals(Allowed(until), coordinator.stateOf(YOUTUBE))
+
+            // The old window runs to its end, past where a strict one would have ended.
+            clock.advanceBy(TIMING.strictWindowMillis)
+            assertTrue(tick().isEmpty())
+            clock.advanceBy(until - clock.now)
+            assertEquals(listOf(ShowBreath), tick().single().effects)
+
+            // The next window is the strict one.
+            clock.advanceBy(TIMING.breathDurationMillis)
+            coordinator.handle(GateInput.BreathFinished(YOUTUBE, clock.now))
+            coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+            assertEquals(Allowed(clock.now + TIMING.strictWindowMillis), coordinator.stateOf(YOUTUBE))
+        }
+
+    @Test
+    fun `loosening mid-window doesn't extend the running window`() =
+        runTest {
+            coordinator.handle(GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube", WatchMode.STRICT))))
+            prompt(YOUTUBE)
+            coordinator.handle(GateInput.AnsweredNo(YOUTUBE, clock.now))
+            val until = clock.now + TIMING.strictWindowMillis
+            coordinator.handle(GateInput.WatchedChanged(listOf(watched(YOUTUBE, "YouTube", WatchMode.MINDFUL))))
+            assertEquals(Allowed(until), coordinator.stateOf(YOUTUBE))
+            clock.advanceBy(TIMING.strictWindowMillis)
+            assertEquals(listOf(ShowBreath), tick().single().effects)
+        }
+
+    @Test
+    fun `a mode change during the breath doesn't restart it`() =
+        runTest {
+            front(YOUTUBE)
+            val startedAt = clock.now
+            clock.advanceBy(1_000)
+            coordinator.handle(
+                GateInput.WatchedChanged(
+                    listOf(watched(YOUTUBE, "YouTube", WatchMode.FOCUSED), watched(INSTAGRAM, "Instagram")),
+                ),
+            )
+            assertEquals(Breathing(startedAt), coordinator.stateOf(YOUTUBE))
         }
 }
